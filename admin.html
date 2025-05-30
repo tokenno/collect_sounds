@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sound Hunt Admin</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    #loginForm, #adminControls {
+      margin: 20px auto;
+      max-width: 400px;
+    }
+    input[type="password"] {
+      padding: 10px;
+      font-size: 1.1em;
+      margin: 10px;
+      width: 200px;
+    }
+    button {
+      padding: 12px 24px;
+      margin: 5px;
+      font-size: 1.1em;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      touch-action: manipulation;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #gpsStatus {
+      font-size: 1.2em;
+      margin: 20px 0;
+    }
+    .manual {
+      margin: 20px 0;
+      width: 100%;
+      max-width: 300px;
+    }
+    @media (max-width: 600px) {
+      button {
+        padding: 10px 20px;
+        font-size: 1em;
+      }
+      input[type="password"] {
+        font-size: 1em;
+        width: 180px;
+      }
+      #gpsStatus {
+        font-size: 1em;
+      }
+      h1 {
+        font-size: 1.5em;
+      }
+      h2 {
+        font-size: 1.2em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sound Hunt Admin</h1>
+  <div id="loginForm">
+    <h2>Admin Login</h2>
+    <input type="password" id="passwordInput" placeholder="Enter password">
+    <button id="loginBtn">Login</button>
+  </div>
+  <div id="adminControls" style="display: none;">
+    <h2>Admin Controls</h2>
+    <div id="gpsStatus">Waiting for GPS...</div>
+    <div class="manual">
+      <h2>Set Hidden Coordinates</h2>
+      <div id="manualControls">
+        <p id="manual1">Point 1: - Set <button class="setGps" data-point="1">Set GPS</button></p>
+        <p id="manual2">Point 2: - Set <button class="setGps" data-point="2">Set GPS</button></p>
+        <p id="manual3">Point 3: - Set <button class="setGps" data-point="3">Set GPS</button></p>
+        <p id="manual4">Point 4: - Set <button class="setGps" data-point="4">Set GPS</button></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = "admin123"; // Hardcoded for simplicity; use secure authentication in production
+    let currentPosition = null;
+    let targetPoints = [
+      { lat: null, lng: null, set: false },
+      { lat: null, lng: null, set: false },
+      { lat: null, lng: null, set: false },
+      { lat: null, lng: null, set: false }
+    ];
+
+    // Load existing coordinates
+    function loadCoordinates() {
+      const storedPoints = localStorage.getItem('targetPoints');
+      if (storedPoints) {
+        targetPoints = JSON.parse(storedPoints);
+        targetPoints.forEach((point, index) => {
+          if (point.set) {
+            document.getElementById(`manual${index + 1}`).textContent = `Point ${index + 1}: Lat ${point.lat.toFixed(4)}, Lng ${point.lng.toFixed(4)}`;
+          }
+        });
+      }
+    }
+
+    // Save coordinates to localStorage
+    function saveCoordinates() {
+      localStorage.setItem('targetPoints', JSON.stringify(targetPoints));
+    }
+
+    // Update GPS status
+    function updatePosition(position) {
+      currentPosition = position.coords;
+      document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
+    }
+
+    // Handle GPS errors
+    function handleError(error) {
+      document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
+    }
+
+    // Login handler
+    document.getElementById('loginBtn').addEventListener('click', () => {
+      const password = document.getElementById('passwordInput').value;
+      if (password === ADMIN_PASSWORD) {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('adminControls').style.display = 'block';
+        navigator.geolocation.watchPosition(updatePosition, handleError, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+      } else {
+        alert('Incorrect password');
+      }
+    });
+
+    // Set GPS points
+    document.querySelectorAll('.setGps').forEach(button => {
+      button.addEventListener('click', () => {
+        if (!currentPosition) return;
+        const pointIndex = parseInt(button.dataset.point) - 1;
+        targetPoints[pointIndex].lat = currentPosition.latitude;
+        targetPoints[pointIndex].lng = currentPosition.longitude;
+        targetPoints[pointIndex].set = true;
+        document.getElementById(`manual${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${point.lng.toFixed(4)}`;
+        saveCoordinates();
+      });
+    });
+
+    // Initialize
+    loadCoordinates();
+  </script>
+</body>
+</html>

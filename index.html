@@ -11,58 +11,74 @@
       margin: 0;
       padding: 20px;
       background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
     }
     h1, h2 {
       color: #333;
     }
-    #gpsStatus {
+    #gpsStatus, #message {
       font-size: 1.2em;
       margin: 20px 0;
     }
-    button {
-      padding: 10px 20px;
+    button, a.admin-link {
+      padding: 12px 24px;
       margin: 5px;
-      font-size: 1em;
+      font-size: 1.1em;
       cursor: pointer;
       background-color: #4CAF50;
       color: white;
       border: none;
       border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+      touch-action: manipulation;
     }
-    button:hover {
+    button:hover, a.admin-link:hover {
       background-color: #45a049;
     }
-    #compass {
-      width: 100px;
-      height: 100px;
+    #compassCanvas {
       margin: 20px auto;
-      position: relative;
-    }
-    #compassArrow {
-      position: absolute;
-      top: 10%;
-      left: 50%;
-      width: 2px;
-      height: 40px;
-      background-color: red;
-      transform-origin: bottom center;
     }
     .mixer {
       margin: 20px 0;
+      width: 100%;
+      max-width: 300px;
     }
     .mixer label {
       display: block;
       margin: 10px 0;
     }
-    .target, .manual {
-      margin: 10px 0;
+    .target, .manual, .controls {
+      margin: 20px 0;
+      width: 100%;
+      max-width: 300px;
+    }
+    @media (max-width: 600px) {
+      button, a.admin-link {
+        padding: 10px 20px;
+        font-size: 1em;
+      }
+      #gpsStatus, #message {
+        font-size: 1em;
+      }
+      h1 {
+        font-size: 1.5em;
+      }
+      h2 {
+        font-size: 1.2em;
+      }
     }
   </style>
 </head>
 <body>
   <h1>Sound Hunt</h1>
   <p>Walk around to discover hidden sounds nearby.</p>
+  <a href="admin.html" class="admin-link">Admin Settings</a>
   <div id="gpsStatus">Waiting for GPS...</div>
+  <div id="message"></div>
 
   <div class="controls">
     <button id="startTracking">Start Tracking</button>
@@ -70,9 +86,7 @@
     <button id="resetAll">Reset All</button>
   </div>
 
-  <div id="compass">
-    <div id="compassArrow"></div>
-  </div>
+  <canvas id="compassCanvas" width="100" height="100"></canvas>
 
   <div class="collected">
     <h2>Collected Sounds</h2>
@@ -93,7 +107,7 @@
   <div class="manual">
     <h2>Toggle Manual Mode</h2>
     <button id="toggleManual">Toggle Manual Mode</button>
-    <div id="manualControls">
+    <div id="manualControls" style="display: none;">
       <p id="manual1">Manual 1: - Set <button class="setGps" data-point="1">Set GPS</button></p>
       <p id="manual2">Manual 2: - Set <button class="setGps" data-point="2">Set GPS</button></p>
       <p id="manual3">Manual 3: - Set <button class="setGps" data-point="3">Set GPS</button></p>
@@ -118,15 +132,34 @@
     let manualMode = false;
     let currentPosition = null;
     let targetPoints = [
-      { lat: null, lng: null, set: false, sound: null, found: false },
-      { lat: null, lng: null, set: false, sound: null, found: false },
-      { lat: null, lng: null, set: false, sound: null, found: false },
-      { lat: null, lng: null, set: false, sound: null, found: false }
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true }
     ];
     let selectedTarget = null;
     let sounds = [];
     let beepSource = null;
     let lastBeepTime = 0;
+    let foundCount = 0;
+
+    // Load admin-set coordinates from localStorage
+    function loadAdminCoordinates() {
+      const storedPoints = localStorage.getItem('targetPoints');
+      if (storedPoints) {
+        const parsedPoints = JSON.parse(storedPoints);
+        manualMode = false;
+        document.getElementById('toggleManual').style.display = 'none';
+        parsedPoints.forEach((point, index) => {
+          if (point.lat && point.lng) {
+            targetPoints[index].lat = point.lat;
+            targetPoints[index].lng = point.lng;
+            targetPoints[index].set = true;
+            document.getElementById(`manual${index + 1}`).textContent = `Point ${index + 1}: Hidden`;
+          }
+        });
+      }
+    }
 
     // Generate simple sine wave sounds for each target
     function createSound(frequency) {
@@ -180,7 +213,7 @@
     // Play beep based on distance
     function playBeep(distance) {
       const now = Date.now();
-      const interval = Math.max(100, 1000 - distance * 30); // Faster beep as closer
+      const interval = Math.max(100, 1000 - distance * 30);
       if (now - lastBeepTime < interval) return;
       lastBeepTime = now;
       if (!beepSource) {
@@ -195,7 +228,7 @@
 
     // Calculate distance between two GPS points (in meters)
     function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3; // Earth's radius in meters
+      const R = 6371e3;
       const φ1 = lat1 * Math.PI / 180;
       const φ2 = lat2 * Math.PI / 180;
       const Δφ = (lat2 - lat1) * Math.PI / 180;
@@ -219,13 +252,35 @@
       return (θ * 180 / Math.PI + 360) % 360;
     }
 
-    // Update compass
+    // Update compass with canvas-based arrow
     function updateCompass() {
-      if (!isCompassEnabled || !selectedTarget || !currentPosition || !targetPoints[selectedTarget - 1].set) return;
+      if (!isCompassEnabled || !selectedTarget || !currentPosition || !targetPoints[selectedTarget - 1].set) {
+        const canvas = document.getElementById('compassCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
       const target = targetPoints[selectedTarget - 1];
       const bearing = getBearing(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng);
-      const compassArrow = document.getElementById('compassArrow');
-      compassArrow.style.transform = `rotate(${bearing}deg)`;
+      const canvas = document.getElementById('compassCanvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      ctx.arc(50, 50, 45, 0, 2 * Math.PI);
+      ctx.strokeStyle = '#333';
+      ctx.stroke();
+      ctx.save();
+      ctx.translate(50, 50);
+      ctx.rotate(bearing * Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(0, -30);
+      ctx.lineTo(10, 10);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(-10, 10);
+      ctx.closePath();
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.restore();
     }
 
     // Reset all states
@@ -234,23 +289,26 @@
       isCompassEnabled = false;
       manualMode = false;
       selectedTarget = null;
+      foundCount = 0;
       targetPoints = [
-        { lat: null, lng: null, set: false, sound: null, found: false },
-        { lat: null, lng: null, set: false, sound: null, found: false },
-        { lat: null, lng: null, set: false, sound: null, found: false },
-        { lat: null, lng: null, set: false, sound: null, found: false }
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true }
       ];
       document.getElementById('startTracking').textContent = 'Start Tracking';
       document.getElementById('enableCompass').textContent = 'Enable Compass';
       document.getElementById('toggleManual').textContent = 'Toggle Manual Mode';
+      document.getElementById('toggleManual').style.display = localStorage.getItem('targetPoints') ? 'none' : 'block';
       document.getElementById('manualControls').style.display = 'none';
-      document.getElementById('compassArrow').style.transform = 'rotate(0deg)';
+      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 100, 100);
+      document.getElementById('message').textContent = '';
       document.querySelectorAll('.targetBtn').forEach(btn => btn.style.backgroundColor = '#4CAF50');
       document.querySelectorAll('input[type="range"]').forEach(slider => slider.value = 1);
       document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
       for (let i = 1; i <= 4; i++) {
         document.getElementById(`sound${i}`).textContent = `Sound ${i}: Not found`;
-        document.getElementById(`manual${i}`).textContent = `Manual ${i}: - Set`;
+        document.getElementById(`manual${i}`).textContent = localStorage.getItem('targetPoints') ? `Point ${i}: Hidden` : `Manual ${i}: - Set`;
       }
       sounds.forEach(sound => {
         if (sound.oscillator.started) {
@@ -258,11 +316,12 @@
           sound.oscillator.started = false;
         }
       });
-      loadSounds(); // Recreate sounds
+      loadSounds();
       if (beepSource) {
         beepSource.oscillator.stop();
         beepSource = null;
       }
+      loadAdminCoordinates();
     }
 
     // Update GPS status and proximity checks
@@ -273,15 +332,22 @@
         targetPoints.forEach((point, index) => {
           if (point.set) {
             const distance = getDistance(currentPosition.latitude, currentPosition.longitude, point.lat, point.lng);
-            if (distance < 10 && !point.found) {
-              point.found = true;
-              document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
-              playSound(index, 3);
-            } else if (distance >= 10 && point.found && manualMode) {
-              point.found = false; // Reset found state in manual mode
-              document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Not found`;
-            } else if (distance < 30) {
-              playBeep(distance);
+            if (manualMode && !point.discoveryEligible && distance >= 30) {
+              point.discoveryEligible = true;
+            }
+            if (point.discoveryEligible) {
+              if (distance < 5 && !point.found) {
+                point.found = true;
+                foundCount++;
+                document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
+                document.getElementById('message').textContent = `You found sound ${index + 1}`;
+                playSound(index, 3);
+                if (foundCount === 4) {
+                  document.getElementById('message').textContent = 'Well done';
+                }
+              } else if (distance < 30 && distance >= 5) {
+                playBeep(distance);
+              }
             }
           }
         });
@@ -315,11 +381,16 @@
       isCompassEnabled = !isCompassEnabled;
       document.getElementById('enableCompass').textContent = isCompassEnabled ? 'Disable Compass' : 'Enable Compass';
       if (isCompassEnabled) updateCompass();
-      else document.getElementById('compassArrow').style.transform = 'rotate(0deg)';
+      else {
+        const canvas = document.getElementById('compassCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
     });
 
     // Toggle manual mode
     document.getElementById('toggleManual').addEventListener('click', () => {
+      if (localStorage.getItem('targetPoints')) return;
       manualMode = !manualMode;
       document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
       document.getElementById('toggleManual').textContent = manualMode ? 'Disable Manual Mode' : 'Toggle Manual Mode';
@@ -333,6 +404,7 @@
         targetPoints[pointIndex].lat = currentPosition.latitude;
         targetPoints[pointIndex].lng = currentPosition.longitude;
         targetPoints[pointIndex].set = true;
+        targetPoints[pointIndex].discoveryEligible = false;
         document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
         playSound(pointIndex, 3);
       });
@@ -370,6 +442,7 @@
 
     // Initialize
     loadSounds();
+    loadAdminCoordinates();
   </script>
 </body>
 </html>
