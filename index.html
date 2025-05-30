@@ -201,18 +201,19 @@
       for (let i = 0; i < targetLocations.length; i++) {
         const dist = getDistance(latitude, longitude, targetLocations[i].lat, targetLocations[i].lon);
 
-        if (dist < 10) {
-          if (!activeZones[i]) {
-            activeZones[i] = true;
-            unlockSound(i);
-          }
-        } else if (dist < 50) {
-          startBeeping(dist);
-        } else {
-          stopBeeping();
-          activeZones[i] = false;
-        }
-      }
+   if (dist < 10) {
+  if (!activeZones[i]) {
+    activeZones[i] = true;
+    unlockSound(i);
+  }
+} else {
+  if (activeZones[i]) {
+    activeZones[i] = false;
+    audioSources[i]?.stop(); // optional: stop loop
+    audioSources[i] = null;
+  }
+}
+
     }, err => {
       statusEl.textContent = 'Error getting GPS location.';
     });
