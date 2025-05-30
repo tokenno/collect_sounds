@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,74 +17,48 @@
   <div class="max-w-md mx-auto">
     <h1 class="text-2xl font-bold mb-2">Sound Hunt</h1>
     <p class="mb-4">Walk around to discover hidden sounds nearby.</p>
-    <div id="status" class="text-green-600 mb-4">Waiting for GPS...</div>
+    <div id="status" class="text-green-600 mb-4">Waiting for GPS...</div><div class="mb-4">
+  <h2 class="font-semibold">Collected Sounds</h2>
+  <ul id="collectedList" class="list-disc list-inside">
+    <li id="sound0" class="text-red-600">Sound 1: Not found</li>
+    <li id="sound1" class="text-red-600">Sound 2: Not found</li>
+    <li id="sound2" class="text-red-600">Sound 3: Not found</li>
+    <li id="sound3" class="text-red-600">Sound 4: Not found</li>
+  </ul>
+</div>
 
-    <div class="mb-4">
-      <h2 class="font-semibold">Collected Sounds</h2>
-      <ul id="collectedList" class="list-disc list-inside">
-        <li id="sound0" class="text-red-600">Sound 1: Not found</li>
-        <li id="sound1" class="text-red-600">Sound 2: Not found</li>
-        <li id="sound2" class="text-red-600">Sound 3: Not found</li>
-        <li id="sound3" class="text-red-600">Sound 4: Not found</li>
-      </ul>
-    </div>
+<div class="mb-4">
+  <h2 class="font-semibold mb-2">Select Target</h2>
+  <select id="targetSelector" class="w-full p-2 border rounded">
+    <option value="0">Target 1</option>
+    <option value="1">Target 2</option>
+    <option value="2">Target 3</option>
+    <option value="3">Target 4</option>
+  </select>
+</div>
 
-    <div class="mb-4">
-      <h2 class="font-semibold mb-2">Select Target</h2>
-      <select id="targetSelector" class="w-full p-2 border rounded">
-        <option value="0">Target 1</option>
-        <option value="1">Target 2</option>
-        <option value="2">Target 3</option>
-        <option value="3">Target 4</option>
-      </select>
-    </div>
+<div class="flex justify-center items-center mb-4">
+  <img id="arrow" src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Red_Arrow_Up.svg" alt="Direction Arrow" />
+</div>
 
-    <div class="flex justify-center items-center mb-4">
-      <img id="arrow" src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Red_Arrow_Up.svg" alt="Direction Arrow" />
-    </div>
-
-    <div class="mb-4">
-      <h2 class="font-semibold mb-2">Toggle Manual Mode</h2>
-      <div id="manualFields" class="space-y-2">
-        <div class="flex items-center space-x-2">
-          <input id="manualLat0" class="w-1/2 p-1 border" placeholder="Lat 1" readonly />
-          <input id="manualLon0" class="w-1/2 p-1 border" placeholder="Lon 1" readonly />
-          <button onclick="setManual(0)" class="bg-blue-500 text-white px-2 py-1">Set</button>
-        </div>
-        <div class="flex items-center space-x-2">
-          <input id="manualLat1" class="w-1/2 p-1 border" placeholder="Lat 2" readonly />
-          <input id="manualLon1" class="w-1/2 p-1 border" placeholder="Lon 2" readonly />
-          <button onclick="setManual(1)" class="bg-blue-500 text-white px-2 py-1">Set</button>
-        </div>
-        <div class="flex items-center space-x-2">
-          <input id="manualLat2" class="w-1/2 p-1 border" placeholder="Lat 3" readonly />
-          <input id="manualLon2" class="w-1/2 p-1 border" placeholder="Lon 3" readonly />
-          <button onclick="setManual(2)" class="bg-blue-500 text-white px-2 py-1">Set</button>
-        </div>
-        <div class="flex items-center space-x-2">
-          <input id="manualLat3" class="w-1/2 p-1 border" placeholder="Lat 4" readonly />
-          <input id="manualLon3" class="w-1/2 p-1 border" placeholder="Lon 4" readonly />
-          <button onclick="setManual(3)" class="bg-blue-500 text-white px-2 py-1">Set</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="mb-4">
-      <button onclick="toggleMute()" class="bg-red-500 text-white px-4 py-2">Sound Off</button>
-    </div>
-
-    <div class="mb-4">
-      <h2 class="font-semibold mb-2">Mixer</h2>
-      <div class="space-y-2">
-        <div>Track 1: <input type="range" min="0" max="1" step="0.01" value="1" oninput="setVolume(0, this.value)"></div>
-        <div>Track 2: <input type="range" min="0" max="1" step="0.01" value="1" oninput="setVolume(1, this.value)"></div>
-        <div>Track 3: <input type="range" min="0" max="1" step="0.01" value="1" oninput="setVolume(2, this.value)"></div>
-        <div>Track 4: <input type="range" min="0" max="1" step="0.01" value="1" oninput="setVolume(3, this.value)"></div>
-      </div>
-    </div>
+<div class="mb-4">
+  <h2 class="font-semibold">Toggle Manual Mode</h2>
+  <div id="manualSection">
+    <div class="mb-2" id="manual0">Manual 1: <span id="coord0">-</span> <button onclick="setManual(0)" class="bg-blue-500 text-white px-2 py-1 rounded">Set</button></div>
+    <div class="mb-2" id="manual1">Manual 2: <span id="coord1">-</span> <button onclick="setManual(1)" class="bg-blue-500 text-white px-2 py-1 rounded">Set</button></div>
+    <div class="mb-2" id="manual2">Manual 3: <span id="coord2">-</span> <button onclick="setManual(2)" class="bg-blue-500 text-white px-2 py-1 rounded">Set</button></div>
+    <div class="mb-2" id="manual3">Manual 4: <span id="coord3">-</span> <button onclick="setManual(3)" class="bg-blue-500 text-white px-2 py-1 rounded">Set</button></div>
   </div>
+</div>
 
-  <script>
+<div class="mb-4">
+  <h2 class="font-semibold">Mixer</h2>
+  <div id="mixer"></div>
+</div>
+
+<button onclick="soundOff()" class="bg-red-600 text-white px-4 py-2 rounded">Sound Off</button>
+
+  </div>  <script>
     const targetLocations = [
       { lat: 63.8257, lon: 20.2630 },
       { lat: 63.8265, lon: 20.2662 },
@@ -94,21 +67,22 @@
     ];
 
     const trackURLs = [
-      '/sound1.wav',
-      '/sound2.wav',
-      '/sound3.wav',
-      '/sound4.wav'
+      'https://yourserver.com/track1.mp3',
+      'https://yourserver.com/track2.mp3',
+      'https://yourserver.com/track3.mp3',
+      'https://yourserver.com/track4.mp3'
     ];
 
     const unlocked = [false, false, false, false];
+    const activeZones = [false, false, false, false];
+    const played = [false, false, false, false];
+    const audioSources = [null, null, null, null];
+    const gainNodes = [null, null, null, null];
     let collected = 0;
     let beepInterval = null;
-    let audioCtx = null;
+    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let currentLat = 0;
     let currentLon = 0;
-    let sources = [null, null, null, null];
-    let gains = [null, null, null, null];
-    let muted = false;
 
     const statusEl = document.getElementById('status');
     const arrowEl = document.getElementById('arrow');
@@ -141,10 +115,8 @@
       const interval = Math.max(300, distance * 10);
       if (beepInterval) clearInterval(beepInterval);
       beepInterval = setInterval(() => {
-        if (!muted) {
-          const beep = new Audio('/beep.wav');
-          beep.play();
-        }
+        const beep = new Audio('https://yourserver.com/beep.mp3');
+        beep.play();
       }, interval);
     }
 
@@ -155,61 +127,66 @@
       }
     }
 
-    async function unlockSound(index) {
-      if (unlocked[index]) return;
-      unlocked[index] = true;
-      stopBeeping();
-      alert("You found a sound!");
-
-      if (!audioCtx) audioCtx = new AudioContext();
+    async function playSound(index) {
+      if (audioSources[index]) return;
       const res = await fetch(trackURLs[index]);
       const buf = await res.arrayBuffer();
       const audioBuf = await audioCtx.decodeAudioData(buf);
       const source = audioCtx.createBufferSource();
-      const gainNode = audioCtx.createGain();
+      const gain = audioCtx.createGain();
       source.buffer = audioBuf;
+      source.connect(gain);
+      gain.connect(audioCtx.destination);
+      gain.gain.value = 1;
+      gainNodes[index] = gain;
+      audioSources[index] = source;
       source.loop = true;
-      source.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      gainNode.gain.value = 1;
       source.start();
 
-      sources[index] = source;
-      gains[index] = gainNode;
-
-      document.getElementById(`sound${index}`).textContent = `Sound ${index + 1}: Found!`;
-      document.getElementById(`sound${index}`).classList.replace("text-red-600", "text-green-600");
-
-      collected++;
-      if (collected === 4) {
-        setTimeout(() => alert("Well done! All sounds collected."), 500);
-      }
+      const mixer = document.getElementById('mixer');
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.min = 0;
+      slider.max = 1;
+      slider.step = 0.01;
+      slider.value = 1;
+      slider.oninput = () => gain.gain.value = slider.value;
+      mixer.appendChild(slider);
     }
 
-    function toggleMute() {
-      muted = !muted;
-      if (audioCtx && gains) {
-        gains.forEach(g => g && (g.gain.value = muted ? 0 : 1));
+    async function unlockSound(index) {
+      if (!unlocked[index]) {
+        unlocked[index] = true;
+        document.getElementById(`sound${index}`).textContent = `Sound ${index + 1}: Found!`;
+        document.getElementById(`sound${index}`).classList.replace("text-red-600", "text-green-600");
+        collected++;
+        if (collected === 4) setTimeout(() => alert("Well done! All sounds collected."), 500);
       }
-    }
-
-    function setVolume(index, value) {
-      if (gains[index]) gains[index].gain.value = muted ? 0 : parseFloat(value);
+      stopBeeping();
+      await playSound(index);
     }
 
     function setManual(index) {
-      document.getElementById(`manualLat${index}`).value = currentLat.toFixed(6);
-      document.getElementById(`manualLon${index}`).value = currentLon.toFixed(6);
+      targetLocations[index] = { lat: currentLat, lon: currentLon };
+      played[index] = false;
+      document.getElementById(`coord${index}`).textContent = `${currentLat.toFixed(5)}, ${currentLon.toFixed(5)}`;
+    }
+
+    function soundOff() {
+      audioSources.forEach(src => src && src.stop());
+      audioSources.fill(null);
+      gainNodes.fill(null);
+      document.getElementById('mixer').innerHTML = '';
     }
 
     navigator.geolocation.watchPosition(pos => {
       const { latitude, longitude } = pos.coords;
       currentLat = latitude;
       currentLon = longitude;
+      statusEl.textContent = `Current location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
 
       for (let i = 0; i < 4; i++) {
-        document.getElementById(`manualLat${i}`).value = latitude.toFixed(6);
-        document.getElementById(`manualLon${i}`).value = longitude.toFixed(6);
+        document.getElementById(`coord${i}`).textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
       }
 
       const targetIndex = parseInt(targetSelector.value);
@@ -217,30 +194,19 @@
       const bearing = getBearing(currentLat, currentLon, target.lat, target.lon);
       updateArrow(bearing);
 
-      statusEl.textContent = `Current location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-
-      let closest = null;
-      let closestDist = Infinity;
-
       for (let i = 0; i < targetLocations.length; i++) {
-        if (unlocked[i]) continue;
         const dist = getDistance(latitude, longitude, targetLocations[i].lat, targetLocations[i].lon);
-        if (dist < closestDist) {
-          closest = i;
-          closestDist = dist;
-        }
-      }
 
-      if (closest !== null) {
-        if (closestDist < 10) {
-          unlockSound(closest);
-          statusEl.textContent = `Sound ${closest + 1} found!`;
-        } else if (closestDist < 50) {
-          startBeeping(closestDist);
-          statusEl.textContent = `You're getting warmer... (${Math.round(closestDist)}m)`;
+        if (dist < 10) {
+          if (!activeZones[i]) {
+            activeZones[i] = true;
+            unlockSound(i);
+          }
+        } else if (dist < 50) {
+          startBeeping(dist);
         } else {
           stopBeeping();
-          statusEl.textContent = `Keep walking... (${Math.round(closestDist)}m)`;
+          activeZones[i] = false;
         }
       }
     }, err => {
@@ -254,6 +220,5 @@
         });
       });
     }
-  </script>
-</body>
+  </script></body>
 </html>
