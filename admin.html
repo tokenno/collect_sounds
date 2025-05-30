@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel</title>
+  <title>Sound Hunt Admin</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -29,7 +29,7 @@
       margin: 10px;
       width: 200px;
     }
-    button, a {
+    button, a.main-link {
       padding: 12px 24px;
       margin: 5px;
       font-size: 1.1em;
@@ -42,8 +42,14 @@
       display: inline-block;
       touch-action: manipulation;
     }
-    button:hover, a:hover {
+    button:hover, a.main-link:hover {
       background-color: #45a049;
+    }
+    button.active {
+      background-color: #d32f2f;
+    }
+    button.active:hover {
+      background-color: #b71c1c;
     }
     #gpsStatus, #statusWindow {
       font-size: 1.2em;
@@ -62,7 +68,7 @@
       max-width: 300px;
     }
     @media (max-width: 600px) {
-      button, a {
+      button, a.main-link {
         padding: 10px 20px;
         font-size: 1em;
       }
@@ -86,16 +92,16 @@
   <h1>Sound Hunt Admin</h1>
   <div id="loginForm">
     <h2>Admin Login</h2>
-    <input type="password" id="adminPassword" placeholder="Enter admin password">
+    <input type="password" id="passwordInput" placeholder="Enter password">
     <button id="loginBtn">Login</button>
   </div>
   <div id="adminControls" style="display: none;">
     <h2>Admin Controls</h2>
-    <a href="index.html">Return to Main App</a>
+    <a href="index.html" class="main-link">Return to Main App</a>
     <div id="gpsStatus">Waiting for GPS...</div>
     <div id="statusWindow"></div>
     <div class="manual">
-      <h2>Admin Set Coordinates</h2>
+      <h2>Set Hidden Coordinates</h2>
       <div id="manualControls">
         <p id="point1">Point 1: - Set <button class="setGps" data-point="1">Set GPS</button></p>
         <p id="point2">Point 2: - Set <button class="setGps" data-point="2">Set GPS</button></p>
@@ -116,10 +122,10 @@
     ];
 
     // Update status window
-    function updateStatus(statusMessage, statusType = 'normal') {
+    function updateStatus(message, type = 'normal') {
       const statusWindow = document.getElementById('statusWindow');
-      statusWindow.textContent = statusMessage;
-      statusWindow.className = statusType; // 'normal', 'error', or 'success'
+      statusWindow.textContent = message;
+      statusWindow.className = type; // 'normal', 'error', or 'success'
       setTimeout(() => {
         statusWindow.textContent = '';
         statusWindow.className = '';
@@ -134,6 +140,7 @@
         targetPoints.forEach((point, index) => {
           if (point.set) {
             document.getElementById(`point${index + 1}`).textContent = `Point ${index + 1}: Lat ${point.lat.toFixed(4)}, Lng ${point.lng.toFixed(4)}`;
+            document.querySelector(`.setGps[data-point="${index + 1}"]`).classList.add('active');
           }
         });
         updateStatus('Loaded existing coordinates.', 'success');
@@ -162,14 +169,14 @@
 
     // Login handler
     document.getElementById('loginBtn').addEventListener('click', () => {
-      const password = document.getElementById('adminPassword').value;
+      const password = document.getElementById('passwordInput').value;
       if (password === ADMIN_PASSWORD) {
-        document.getElementById('loginForm').style.display = 'none';
+        document KEEPIT.getElementById('loginForm').style.display = 'none';
         document.getElementById('adminControls').style.display = 'block';
         navigator.geolocation.watchPosition(updatePosition, handleError, {
           enableHighAccuracy: true,
           timeout: 5000,
-          maximumAge: 0
+          maximumAge: 0,
         });
         updateStatus('Logged in successfully.', 'success');
       } else {
@@ -189,6 +196,7 @@
         targetPoints[pointIndex].lng = currentPosition.longitude;
         targetPoints[pointIndex].set = true;
         document.getElementById(`point${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+        button.classList.add('active');
         saveCoordinates();
         updateStatus(`Point ${pointIndex + 1} set successfully.`, 'success');
       });
