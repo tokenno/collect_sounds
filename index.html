@@ -202,6 +202,7 @@
         messageDiv.textContent = '';
         messageDiv.className = '';
       }, 5000);
+      console.log('Message:', message, type);
     }
 
     // Load admin-set coordinates from localStorage
@@ -400,7 +401,7 @@
       document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
       for (let i = 1; i <= 4; i++) {
         document.getElementById(`sound${i}`).textContent = `Sound ${i}: Not found`;
-        document.getElementById(`manual${i}`).textContent = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
+        document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
       }
       sounds.forEach(sound => {
         if (sound.oscillator.started) {
@@ -414,6 +415,33 @@
         beepSource = null;
       }
       loadAdminCoordinates();
+      // Reattach event listeners after reset
+      document.querySelectorAll('.setGps').forEach(button => {
+        button.addEventListener('click', setGpsHandler);
+      });
+    }
+
+    // Set GPS points handler
+    function setGpsHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+      updateDebugStatus(`Set GPS clicked for point ${pointIndex + 1}, manualMode: ${manualMode}, currentPosition: ${!!currentPosition}`);
+      if (!manualMode) {
+        updateMessage(`Cannot set Target ${pointIndex + 1}: Manual mode is disabled`, 'error');
+        return;
+      }
+      if (!currentPosition) {
+        updateMessage(`Cannot set Target ${pointIndex + 1}: GPS unavailable`, 'error');
+        return;
+      }
+      targetPoints[pointIndex].lat = currentPosition.latitude;
+      targetPoints[pointIndex].lng = currentPosition.longitude;
+      targetPoints[pointIndex].set = true;
+      targetPoints[pointIndex].discoveryEligible = false;
+      document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+      updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
+      button.classList.add('active');
+      playSound(pointIndex, 3);
     }
 
     // Update GPS status and proximity checks
@@ -502,6 +530,10 @@
           document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
           document.querySelectorAll(`.setGps[data-point="${i}"]`)[0].classList.remove('active');
         }
+        // Reattach event listeners after DOM update
+        document.querySelectorAll('.setGps').forEach(button => {
+          button.addEventListener('click', setGpsHandler);
+        });
       } else if (!manualMode) {
         loadAdminCoordinates();
       }
@@ -509,35 +541,7 @@
 
     // Set GPS points
     document.querySelectorAll('.setGps').forEach(button => {
-      button.addEventListener('click', () => {
-        const pointIndex = parseInt(button.dataset.point) - 1;
-        if (!manualMode) {
-          updateMessage(`Cannot set Target ${pointIndex + 1}: Manual mode is disabled`, 'error');
-          return;
-        }
-        if (!currentPosition) {
-          updateMessage(`Cannot set Target ${pointIndex + 1}: GPS unavailable`, 'error');
-          return;
-        }
-        targetPoints[pointIndex].lat = currentPosition.latitude;
-        targetPoints[pointIndex].lng = currentPosition.longitude;
-        targetPoints[pointIndex].set = true;
-        targetPoints[pointIndex].discoveryEligible = false;
-        document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
-        updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
-        button.classList.add('active');
-        playSound(pointIndex, 3);
-      });
-    });
-
-    // Select target
-    document.querySelectorAll('.targetBtn').forEach(button => {
-      button.addEventListener('click', () => {
-        selectedTarget = parseInt(button.dataset.target);
-        document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-        updateCompass();
-      });
+      button.addEventListener('click', setGpsHandler);
     });
 
     // Volume controls
