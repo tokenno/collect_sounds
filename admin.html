@@ -157,7 +157,7 @@
     // Update GPS status
     function updatePosition(position) {
       currentPosition = position.coords;
-      document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
+      document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
       updateStatus('GPS position updated.');
     }
 
@@ -195,7 +195,7 @@
         targetPoints[pointIndex].lat = currentPosition.latitude;
         targetPoints[pointIndex].lng = currentPosition.longitude;
         targetPoints[pointIndex].set = true;
-        document.getElementById(`point${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${pointIndex + 1}`;
+        document.getElementById(`point${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
         button.classList.add('active');
         saveCoordinates();
         updateStatus(`Point ${pointIndex + 1} set successfully.`, 'success');
