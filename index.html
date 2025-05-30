@@ -30,6 +30,9 @@
     #message.error {
       color: #d32f2f;
     }
+    #message.warning {
+      color: #f57c00;
+    }
     button, a.admin-link {
       padding: 12px 24px;
       margin: 5px;
@@ -52,17 +55,20 @@
     button.active:hover {
       background-color: #b71c1c;
     }
-    button:disabled {
-      background-color: #ccc;
-      cursor: not-allowed;
-    }
-    button:disabled:hover {
-      background-color: #ccc;
-    }
     #compassCanvas {
       margin: 20px auto;
       border: 1px solid #333;
       background-color: #fff;
+    }
+    #fallbackArrow {
+      display: none;
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 40px solid red;
+      margin: 20px auto;
+      transform-origin: center bottom;
     }
     .mixer {
       margin: 20px 0;
@@ -110,6 +116,7 @@
   </div>
 
   <canvas id="compassCanvas" width="200" height="200"></canvas>
+  <div id="fallbackArrow"></div>
 
   <div class="collected">
     <h2>Collected Sounds</h2>
@@ -175,7 +182,7 @@
     function updateMessage(message, type = 'normal') {
       const messageDiv = document.getElementById('message');
       messageDiv.textContent = message;
-      messageDiv.className = type; // 'normal', 'error', or 'success'
+      messageDiv.className = type; // 'normal', 'error', 'success', 'warning'
       setTimeout(() => {
         messageDiv.textContent = '';
         messageDiv.className = '';
@@ -184,23 +191,21 @@
 
     // Load admin-set coordinates from localStorage
     function loadAdminCoordinates() {
+      if (manualMode) return; // Skip if manual mode is active
       const storedPoints = localStorage.getItem('targetPoints');
       if (storedPoints) {
         const parsedPoints = JSON.parse(storedPoints);
-        manualMode = false;
-        document.getElementById('toggleManual').disabled = true;
-        document.getElementById('toggleManual').title = 'Disabled: Admin points set';
-        parsedPoints.forEach((point, index) => {
+        targetPoints = parsedPoints.map(point => ({
+          ...point,
+          sound: null,
+          found: false,
+          discoveryEligible: true
+        }));
+        targetPoints.forEach((point, index) => {
           if (point.lat && point.lng) {
-            targetPoints[index].lat = point.lat;
-            targetPoints[index].lng = point.lng;
-            targetPoints[index].set = true;
             document.getElementById(`manual${index + 1}`).textContent = `Point ${index + 1}: Hidden`;
           }
         });
-      } else {
-        document.getElementById('toggleManual').disabled = false;
-        document.getElementById('toggleManual').title = 'Enable to set your own points';
       }
     }
 
@@ -299,6 +304,7 @@
     function updateCompass() {
       const canvas = document.getElementById('compassCanvas');
       const ctx = canvas.getContext('2d');
+      const fallbackArrow = document.getElementById('fallbackArrow');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (!isCompassEnabled) {
@@ -343,6 +349,8 @@
       ctx.fill();
       ctx.restore();
 
+      // Hide fallback
+      fallbackArrow.style.display = 'none';
       requestAnimationFrame(updateCompass);
     }
 
@@ -369,6 +377,7 @@
       document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 200, 200);
       updateMessage('');
       updateDebugStatus('');
+      document.getElementById('fallbackArrow').style.display = 'none';
       document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.setGps').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('input[type="range"]').forEach(slider => slider.value = 1);
@@ -453,20 +462,32 @@
         const canvas = document.getElementById('compassCanvas');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('fallbackArrow').style.display = 'none';
         updateDebugStatus('Compass disabled.');
       }
     });
 
     // Toggle manual mode
     document.getElementById('toggleManual').addEventListener('click', () => {
-      if (document.getElementById('toggleManual').disabled) {
-        updateMessage('Manual mode disabled: Admin points active', 'error');
-        return;
-      }
       manualMode = !manualMode;
       document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
       document.getElementById('toggleManual').textContent = manualMode ? 'Disable Manual Mode' : 'Toggle Manual Mode';
       document.getElementById('toggleManual').classList.toggle('active', manualMode);
+      if (manualMode && localStorage.getItem('targetPoints')) {
+        updateMessage('Warning: Manual mode enabled, admin points ignored.', 'warning');
+        targetPoints = [
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true }
+        ];
+        for (let i = 1; i <= 4; i++) {
+          document.getElementById(`manual${i}`).textContent = `Manual ${i}: - Set`;
+          document.querySelector(`.setGps[data-point="${i}"]`).classList.remove('active');
+        }
+      } else if (!manualMode) {
+        loadAdminCoordinates();
+      }
     });
 
     // Set GPS points
