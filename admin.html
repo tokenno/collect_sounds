@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sound Hunt Admin</title>
+  <title>Admin Panel</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -29,7 +29,7 @@
       margin: 10px;
       width: 200px;
     }
-    button, a.main-link {
+    button, a {
       padding: 12px 24px;
       margin: 5px;
       font-size: 1.1em;
@@ -42,7 +42,7 @@
       display: inline-block;
       touch-action: manipulation;
     }
-    button:hover, a.main-link:hover {
+    button:hover, a:hover {
       background-color: #45a049;
     }
     #gpsStatus, #statusWindow {
@@ -62,7 +62,7 @@
       max-width: 300px;
     }
     @media (max-width: 600px) {
-      button, a.main-link {
+      button, a {
         padding: 10px 20px;
         font-size: 1em;
       }
@@ -86,21 +86,21 @@
   <h1>Sound Hunt Admin</h1>
   <div id="loginForm">
     <h2>Admin Login</h2>
-    <input type="password" id="passwordInput" placeholder="Enter password">
+    <input type="password" id="adminPassword" placeholder="Enter admin password">
     <button id="loginBtn">Login</button>
   </div>
   <div id="adminControls" style="display: none;">
     <h2>Admin Controls</h2>
-    <a href="index.html" class="main-link">Return to Main App</a>
+    <a href="index.html">Return to Main App</a>
     <div id="gpsStatus">Waiting for GPS...</div>
     <div id="statusWindow"></div>
     <div class="manual">
-      <h2>Set Hidden Coordinates</h2>
+      <h2>Admin Set Coordinates</h2>
       <div id="manualControls">
-        <p id="manual1">Point 1: - Set <button class="setGps" data-point="1">Set GPS</button></p>
-        <p id="manual2">Point 2: - Set <button class="setGps" data-point="2">Set GPS</button></p>
-        <p id="manual3">Point 3: - Set <button class="setGps" data-point="3">Set GPS</button></p>
-        <p id="manual4">Point 4: - Set <button class="setGps" data-point="4">Set GPS</button></p>
+        <p id="point1">Point 1: - Set <button class="setGps" data-point="1">Set GPS</button></p>
+        <p id="point2">Point 2: - Set <button class="setGps" data-point="2">Set GPS</button></p>
+        <p id="point3">Point 3: - Set <button class="setGps" data-point="3">Set GPS</button></p>
+        <p id="point4">Point 4: - Set <button class="setGps" data-point="4">Set GPS</button></p>
       </div>
     </div>
   </div>
@@ -116,10 +116,14 @@
     ];
 
     // Update status window
-    function updateStatus(message, type = 'normal') {
+    function updateStatus(statusMessage, statusType = 'normal') {
       const statusWindow = document.getElementById('statusWindow');
-      statusWindow.textContent = message;
-      statusWindow.className = type; // 'normal', 'error', or 'success'
+      statusWindow.textContent = statusMessage;
+      statusWindow.className = statusType; // 'normal', 'error', or 'success'
+      setTimeout(() => {
+        statusWindow.textContent = '';
+        statusWindow.className = '';
+      }, 5000); // Clear after 5 seconds
     }
 
     // Load existing coordinates
@@ -129,7 +133,7 @@
         targetPoints = JSON.parse(storedPoints);
         targetPoints.forEach((point, index) => {
           if (point.set) {
-            document.getElementById(`manual${index + 1}`).textContent = `Point ${index + 1}: Lat ${point.lat.toFixed(4)}, Lng ${point.lng.toFixed(4)}`;
+            document.getElementById(`point${index + 1}`).textContent = `Point ${index + 1}: Lat ${point.lat.toFixed(4)}, Lng ${point.lng.toFixed(4)}`;
           }
         });
         updateStatus('Loaded existing coordinates.', 'success');
@@ -158,7 +162,7 @@
 
     // Login handler
     document.getElementById('loginBtn').addEventListener('click', () => {
-      const password = document.getElementById('passwordInput').value;
+      const password = document.getElementById('adminPassword').value;
       if (password === ADMIN_PASSWORD) {
         document.getElementById('loginForm').style.display = 'none';
         document.getElementById('adminControls').style.display = 'block';
@@ -184,7 +188,7 @@
         targetPoints[pointIndex].lat = currentPosition.latitude;
         targetPoints[pointIndex].lng = currentPosition.longitude;
         targetPoints[pointIndex].set = true;
-        document.getElementById(`manual${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+        document.getElementById(`point${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
         saveCoordinates();
         updateStatus(`Point ${pointIndex + 1} set successfully.`, 'success');
       });
