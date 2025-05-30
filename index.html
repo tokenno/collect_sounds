@@ -19,7 +19,7 @@
     h1, h2 {
       color: #333;
     }
-    #gpsStatus, #message {
+    #gpsStatus, #message, #debugStatus {
       font-size: 1.2em;
       margin: 20px 0;
     }
@@ -41,6 +41,7 @@
     }
     #compassCanvas {
       margin: 20px auto;
+      border: 1px solid #333;
     }
     .mixer {
       margin: 20px 0;
@@ -61,7 +62,7 @@
         padding: 10px 20px;
         font-size: 1em;
       }
-      #gpsStatus, #message {
+      #gpsStatus, #message, #debugStatus {
         font-size: 1em;
       }
       h1 {
@@ -78,11 +79,13 @@
   <p>Walk around to discover hidden sounds nearby.</p>
   <a href="admin.html" class="admin-link">Admin Settings</a>
   <div id="gpsStatus">Waiting for GPS...</div>
+  <div id="debugStatus"></div>
   <div id="message"></div>
 
   <div class="controls">
     <button id="startTracking">Start Tracking</button>
     <button id="enableCompass">Enable Compass</button>
+    <button id="toggleCompassMode">Use Phone Compass</button>
     <button id="resetAll">Reset All</button>
   </div>
 
@@ -129,8 +132,9 @@
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let isTracking = false;
     let isCompassEnabled = false;
-    let manualMode = false;
+    let usePhoneCompass = false;
     let currentPosition = null;
+    let deviceOrientation = 0;
     let targetPoints = [
       { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
       { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
@@ -142,6 +146,11 @@
     let beepSource = null;
     let lastBeepTime = 0;
     let foundCount = 0;
+
+    // Update debug status
+    function updateDebugStatus(message) {
+      document.getElementById('debugStatus').textContent = message;
+    }
 
     // Load admin-set coordinates from localStorage
     function loadAdminCoordinates() {
@@ -240,7 +249,7 @@
       return R * c;
     }
 
-    // Calculate bearing for compass
+    // Calculate bearing for GPS-based compass
     function getBearing(lat1, lon1, lat2, lon2) {
       const φ1 = lat1 * Math.PI / 180;
       const φ2 = lat2 * Math.PI / 180;
@@ -254,21 +263,33 @@
 
     // Update compass with canvas-based arrow
     function updateCompass() {
-      if (!isCompassEnabled || !selectedTarget || !currentPosition || !targetPoints[selectedTarget - 1].set) {
-        const canvas = document.getElementById('compassCanvas');
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        return;
-      }
-      const target = targetPoints[selectedTarget - 1];
-      const bearing = getBearing(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng);
       const canvas = document.getElementById('compassCanvas');
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!isCompassEnabled || !selectedTarget || !targetPoints[selectedTarget - 1].set || !currentPosition) {
+        updateDebugStatus('Compass disabled or missing data.');
+        return;
+      }
+
+      let bearing;
+      if (usePhoneCompass) {
+        bearing = deviceOrientation;
+        updateDebugStatus(`Using phone compass: ${bearing.toFixed(2)}°`);
+      } else {
+        const target = targetPoints[selectedTarget - 1];
+        bearing = getBearing(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng);
+        updateDebugStatus(`Using GPS bearing: ${bearing.toFixed(2)}°`);
+      }
+
+      // Draw compass circle
       ctx.beginPath();
       ctx.arc(50, 50, 45, 0, 2 * Math.PI);
       ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
       ctx.stroke();
+
+      // Draw arrow
       ctx.save();
       ctx.translate(50, 50);
       ctx.rotate(bearing * Math.PI / 180);
@@ -277,16 +298,27 @@
       ctx.lineTo(10, 10);
       ctx.lineTo(0, 0);
       ctx.lineTo(-10, 10);
-      ctx.closePath;
+      ctx.closePath();
       ctx.fillStyle = 'red';
       ctx.fill();
       ctx.restore();
+    }
+
+    // Handle device orientation for phone compass
+    function handleDeviceOrientation(event) {
+      if (event.alpha !== null) {
+        deviceOrientation = event.alpha; // Compass heading in degrees
+        if (isCompassEnabled && usePhoneCompass) {
+          updateCompass();
+        }
+      }
     }
 
     // Reset all states
     function resetAll() {
       isTracking = false;
       isCompassEnabled = false;
+      usePhoneCompass = false;
       manualMode = false;
       selectedTarget = null;
       foundCount = 0;
@@ -298,11 +330,13 @@
       ];
       document.getElementById('startTracking').textContent = 'Start Tracking';
       document.getElementById('enableCompass').textContent = 'Enable Compass';
+      document.getElementById('toggleCompassMode').textContent = 'Use Phone Compass';
       document.getElementById('toggleManual').textContent = 'Toggle Manual Mode';
       document.getElementById('toggleManual').style.display = localStorage.getItem('targetPoints') ? 'none' : 'block';
       document.getElementById('manualControls').style.display = 'none';
       document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 100, 100);
       document.getElementById('message').textContent = '';
+      document.getElementById('debugStatus').textContent = '';
       document.querySelectorAll('.targetBtn').forEach(btn => btn.style.backgroundColor = '#4CAF50');
       document.querySelectorAll('input[type="range"]').forEach(slider => slider.value = 1);
       document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
@@ -352,12 +386,13 @@
           }
         });
       }
-      updateCompass();
+      if (!usePhoneCompass) updateCompass();
     }
 
     // Handle GPS errors
     function handleError(error) {
       document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
+      updateDebugStatus(`GPS Error: ${error.message}`);
     }
 
     // Start tracking
@@ -380,11 +415,33 @@
     document.getElementById('enableCompass').addEventListener('click', () => {
       isCompassEnabled = !isCompassEnabled;
       document.getElementById('enableCompass').textContent = isCompassEnabled ? 'Disable Compass' : 'Enable Compass';
-      if (isCompassEnabled) updateCompass();
-      else {
+      if (isCompassEnabled) {
+        updateCompass();
+      } else {
         const canvas = document.getElementById('compassCanvas');
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        updateDebugStatus('Compass disabled.');
+      }
+    });
+
+    // Toggle compass mode
+    document.getElementById('toggleCompassMode').addEventListener('click', () => {
+      usePhoneCompass = !usePhoneCompass;
+      document.getElementById('toggleCompassMode').textContent = usePhoneCompass ? 'Use GPS Compass' : 'Use Phone Compass';
+      if (usePhoneCompass && isCompassEnabled) {
+        if (window.DeviceOrientationEvent) {
+          window.addEventListener('deviceorientation', handleDeviceOrientation);
+          updateDebugStatus('Phone compass enabled.');
+        } else {
+          usePhoneCompass = false;
+          document.getElementById('toggleCompassMode').textContent = 'Use Phone Compass';
+          updateDebugStatus('Phone compass not supported.');
+        }
+      } else {
+        window.removeEventListener('deviceorientation', handleDeviceOrientation);
+        updateDebugStatus('Using GPS compass.');
+        if (isCompassEnabled) updateCompass();
       }
     });
 
