@@ -29,7 +29,7 @@
       margin: 10px;
       width: 200px;
     }
-    button {
+    button, a.main-link {
       padding: 12px 24px;
       margin: 5px;
       font-size: 1.1em;
@@ -38,14 +38,23 @@
       color: white;
       border: none;
       border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
       touch-action: manipulation;
     }
-    button:hover {
+    button:hover, a.main-link:hover {
       background-color: #45a049;
     }
-    #gpsStatus {
+    #gpsStatus, #statusWindow {
       font-size: 1.2em;
       margin: 20px 0;
+      color: #333;
+    }
+    #statusWindow.error {
+      color: #d32f2f;
+    }
+    #statusWindow.success {
+      color: #388e3c;
     }
     .manual {
       margin: 20px 0;
@@ -53,7 +62,7 @@
       max-width: 300px;
     }
     @media (max-width: 600px) {
-      button {
+      button, a.main-link {
         padding: 10px 20px;
         font-size: 1em;
       }
@@ -61,7 +70,7 @@
         font-size: 1em;
         width: 180px;
       }
-      #gpsStatus {
+      #gpsStatus, #statusWindow {
         font-size: 1em;
       }
       h1 {
@@ -82,7 +91,9 @@
   </div>
   <div id="adminControls" style="display: none;">
     <h2>Admin Controls</h2>
+    <a href="index.html" class="main-link">Return to Main App</a>
     <div id="gpsStatus">Waiting for GPS...</div>
+    <div id="statusWindow"></div>
     <div class="manual">
       <h2>Set Hidden Coordinates</h2>
       <div id="manualControls">
@@ -104,6 +115,13 @@
       { lat: null, lng: null, set: false }
     ];
 
+    // Update status window
+    function updateStatus(message, type = 'normal') {
+      const statusWindow = document.getElementById('statusWindow');
+      statusWindow.textContent = message;
+      statusWindow.className = type; // 'normal', 'error', or 'success'
+    }
+
     // Load existing coordinates
     function loadCoordinates() {
       const storedPoints = localStorage.getItem('targetPoints');
@@ -114,6 +132,9 @@
             document.getElementById(`manual${index + 1}`).textContent = `Point ${index + 1}: Lat ${point.lat.toFixed(4)}, Lng ${point.lng.toFixed(4)}`;
           }
         });
+        updateStatus('Loaded existing coordinates.', 'success');
+      } else {
+        updateStatus('No coordinates set. Ready to set new points.');
       }
     }
 
@@ -126,11 +147,13 @@
     function updatePosition(position) {
       currentPosition = position.coords;
       document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
+      updateStatus('GPS position updated.');
     }
 
     // Handle GPS errors
     function handleError(error) {
       document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
+      updateStatus(`GPS Error: ${error.message}`, 'error');
     }
 
     // Login handler
@@ -144,21 +167,26 @@
           timeout: 5000,
           maximumAge: 0
         });
+        updateStatus('Logged in successfully.', 'success');
       } else {
-        alert('Incorrect password');
+        updateStatus('Incorrect password.', 'error');
       }
     });
 
     // Set GPS points
     document.querySelectorAll('.setGps').forEach(button => {
       button.addEventListener('click', () => {
-        if (!currentPosition) return;
         const pointIndex = parseInt(button.dataset.point) - 1;
+        if (!currentPosition) {
+          updateStatus(`Cannot set Point ${pointIndex + 1}: GPS unavailable.`, 'error');
+          return;
+        }
         targetPoints[pointIndex].lat = currentPosition.latitude;
         targetPoints[pointIndex].lng = currentPosition.longitude;
         targetPoints[pointIndex].set = true;
-        document.getElementById(`manual${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${point.lng.toFixed(4)}`;
+        document.getElementById(`manual${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
         saveCoordinates();
+        updateStatus(`Point ${pointIndex + 1} set successfully.`, 'success');
       });
     });
 
