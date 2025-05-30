@@ -19,6 +19,10 @@
     <h1 class="text-2xl font-bold mb-2">Sound Hunt</h1>
     <p class="mb-4">Walk around to discover hidden sounds nearby.</p>
     <div id="status" class="text-green-600 mb-4">Waiting for GPS...</div>
+    <div class="mb-4">
+      <button onclick="startTracking()" class="bg-blue-500 text-white px-4 py-2 rounded mr-2">Start Tracking</button>
+      <button onclick="enableCompass()" class="bg-green-500 text-white px-4 py-2 rounded">Enable Compass</button>
+    </div>
 
     <div class="mb-4">
       <h2 class="font-semibold">Collected Sounds</h2>
@@ -183,7 +187,14 @@
       document.getElementById('mixer').innerHTML = '';
     }
 
-    navigator.geolocation.watchPosition(pos => {
+    let watchId = null;
+function startTracking() {
+  if (!navigator.geolocation) {
+    statusEl.textContent = "Geolocation not supported by your browser.";
+    return;
+  }
+  statusEl.textContent = "Requesting GPS...";
+  watchId = navigator.geolocation.watchPosition(pos => {
       const { latitude, longitude } = pos.coords;
       currentLat = latitude;
       currentLon = longitude;
@@ -201,24 +212,46 @@
       for (let i = 0; i < targetLocations.length; i++) {
         const dist = getDistance(latitude, longitude, targetLocations[i].lat, targetLocations[i].lon);
 
-   if (dist < 10) {
-  if (!activeZones[i]) {
-    activeZones[i] = true;
-    unlockSound(i);
-  }
-} else {
-  if (activeZones[i]) {
-    activeZones[i] = false;
-    audioSources[i]?.stop(); // optional: stop loop
-    audioSources[i] = null;
-  }
-}
-
+        if (dist < 10) {
+          if (!activeZones[i]) {
+            activeZones[i] = true;
+            unlockSound(i);
+          }
+        } else if (dist < 50) {
+          startBeeping(dist);
+        } else {
+          stopBeeping();
+          activeZones[i] = false;
+        }
+      }
     }, err => {
       statusEl.textContent = 'Error getting GPS location.';
     });
 
-    if ('serviceWorker' in navigator) {
+    function enableCompass() {
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(response => {
+        if (response === 'granted') {
+          window.addEventListener('deviceorientation', handleOrientation);
+        } else {
+          alert('Compass permission denied');
+        }
+      }).catch(console.error);
+  } else {
+    window.addEventListener('deviceorientation', handleOrientation);
+  }
+}
+
+function handleOrientation(event) {
+  if (event.alpha !== null) {
+    const heading = 360 - event.alpha; // compass-style
+    arrowEl.style.transform = `rotate(${heading}deg)`;
+  }
+}
+
+
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').then(() => {
           console.log('Service Worker Registered');
@@ -228,3 +261,4 @@
   </script>
 </body>
 </html>
+
