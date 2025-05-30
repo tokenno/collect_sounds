@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sound Hunt</title>
   <style>
     body {
@@ -84,10 +84,24 @@
       width: 100%;
       max-width: 300px;
     }
+    .manual p {
+      margin: 5px 0;
+    }
+    .manual button {
+      margin: 0 5px;
+      padding: 8px 16px;
+    }
     @media (max-width: 600px) {
       button, a.admin-link {
         padding: 10px 20px;
         font-size: 1em;
+      }
+      .manual p {
+        font-size: 0.9em;
+      }
+      .manual button {
+        padding: 6px 12px;
+        font-size: 0.9em;
       }
       #gpsStatus, #message, #debugStatus {
         font-size: 1em;
@@ -138,10 +152,10 @@
     <h2>Toggle Manual Mode</h2>
     <button id="toggleManual" title="Enable to set your own points">Toggle Manual Mode</button>
     <div id="manualControls" style="display: none;">
-      <p id="manual1">Manual 1: - Set <button class="setGps" data-point="1">Set GPS</button></p>
-      <p id="manual2">Manual 2: - Set <button class="setGps" data-point="2">Set GPS</button></p>
-      <p id="manual3">Manual 3: - Set <button class="setGps" data-point="3">Set GPS</button></p>
-      <p id="manual4">Manual 4: - Set <button class="setGps" data-point="4">Set GPS</button></p>
+      <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button></p>
+      <p id="manual2">Manual 2: <button class="setGps" data-point="2">Set GPS</button></p>
+      <p id="manual3">Manual 3: <button class="setGps" data-point="3">Set GPS</button></p>
+      <p id="manual4">Manual 4: <button class="setGps" data-point="4">Set GPS</button></p>
     </div>
   </div>
 
@@ -175,7 +189,8 @@
 
     // Update debug status
     function updateDebugStatus(message) {
-      document.getElementById('debugStatus').textContent = message;
+      document.getElementById('debugStatus').textContent = message || 'Debug: Ready';
+      console.log('Debug:', message);
     }
 
     // Update message with timeout
@@ -207,6 +222,7 @@
           }
         });
       }
+      updateDebugStatus(`Admin coordinates loaded: ${storedPoints ? 'Yes' : 'No'}`);
     }
 
     // Generate simple sine wave sounds for each target
@@ -384,7 +400,7 @@
       document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
       for (let i = 1; i <= 4; i++) {
         document.getElementById(`sound${i}`).textContent = `Sound ${i}: Not found`;
-        document.getElementById(`manual${i}`).textContent = `Manual ${i}: - Set`;
+        document.getElementById(`manual${i}`).textContent = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
       }
       sounds.forEach(sound => {
         if (sound.oscillator.started) {
@@ -473,6 +489,7 @@
       document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
       document.getElementById('toggleManual').textContent = manualMode ? 'Disable Manual Mode' : 'Toggle Manual Mode';
       document.getElementById('toggleManual').classList.toggle('active', manualMode);
+      updateDebugStatus(`Manual mode: ${manualMode}`);
       if (manualMode && localStorage.getItem('targetPoints')) {
         updateMessage('Warning: Manual mode enabled, admin points ignored.', 'warning');
         targetPoints = [
@@ -482,8 +499,8 @@
           { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true }
         ];
         for (let i = 1; i <= 4; i++) {
-          document.getElementById(`manual${i}`).textContent = `Manual ${i}: - Set`;
-          document.querySelector(`.setGps[data-point="${i}"]`).classList.remove('active');
+          document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
+          document.querySelectorAll(`.setGps[data-point="${i}"]`)[0].classList.remove('active');
         }
       } else if (!manualMode) {
         loadAdminCoordinates();

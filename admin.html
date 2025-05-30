@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sound Hunt Admin</title>
   <style>
     body {
@@ -67,6 +67,13 @@
       width: 100%;
       max-width: 300px;
     }
+    .manual p {
+      margin: 5px 0;
+    }
+    .manual button {
+      margin: 0 5px;
+      padding: 8px 16px;
+    }
     @media (max-width: 600px) {
       button, a.main-link {
         padding: 10px 20px;
@@ -75,6 +82,13 @@
       input[type="password"] {
         font-size: 1em;
         width: 180px;
+      }
+      .manual p {
+        font-size: 0.9em;
+      }
+      .manual button {
+        padding: 6px 12px;
+        font-size: 0.9em;
       }
       #gpsStatus, #statusWindow {
         font-size: 1em;
@@ -103,10 +117,10 @@
     <div class="manual">
       <h2>Set Hidden Coordinates</h2>
       <div id="manualControls">
-        <p id="point1">Point 1: - Set <button class="setGps" data-point="1">Set GPS</button></p>
-        <p id="point2">Point 2: - Set <button class="setGps" data-point="2">Set GPS</button></p>
-        <p id="point3">Point 3: - Set <button class="setGps" data-point="3">Set GPS</button></p>
-        <p id="point4">Point 4: - Set <button class="setGps" data-point="4">Set GPS</button></p>
+        <p id="point1">Point 1: <button class="setGps" data-point="1">Set GPS</button></p>
+        <p id="point2">Point 2: <button class="setGps" data-point="2">Set GPS</button></p>
+        <p id="point3">Point 3: <button class="setGps" data-point="3">Set GPS</button></p>
+        <p id="point4">Point 4: <button class="setGps" data-point="4">Set GPS</button></p>
       </div>
     </div>
   </div>
@@ -143,10 +157,12 @@
             document.querySelector(`.setGps[data-point="${index + 1}"]`).classList.add('active');
           }
         });
-        updateStatus('Loaded existing coordinates.', 'success');
       } else {
-        updateStatus('No coordinates set. Ready to set new points.');
+        for (let i = 1; i <= 4; i++) {
+          document.getElementById(`point${i}`).innerHTML = `Point ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
+        }
       }
+      updateStatus('Coordinates loaded or ready to set.', 'success');
     }
 
     // Save coordinates to localStorage
@@ -195,7 +211,7 @@
         targetPoints[pointIndex].lat = currentPosition.latitude;
         targetPoints[pointIndex].lng = currentPosition.longitude;
         targetPoints[pointIndex].set = true;
-        document.getElementById(`point${pointIndex + 1}`).textContent = `Point ${index + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+        document.getElementById(`point${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
         button.classList.add('active');
         saveCoordinates();
         updateStatus(`Point ${pointIndex + 1} set successfully.`, 'success');
