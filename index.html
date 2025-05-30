@@ -1,264 +1,331 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sound Hunt</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <style>
-    #arrow {
-      width: 50px;
-      height: 50px;
-      transform-origin: center center;
-      transition: transform 0.2s linear;
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    #gpsStatus {
+      font-size: 1.2em;
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 1em;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #compass {
+      width: 100px;
+      height: 100px;
+      margin: 20px auto;
+      position: relative;
+    }
+    #compassArrow {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      width: 2px;
+      height: 40px;
+      background-color: red;
+      transform-origin: bottom center;
+    }
+    .mixer {
+      margin: 20px 0;
+    }
+    .mixer label {
+      display: block;
+      margin: 10px 0;
+    }
+    .target, .manual {
+      margin: 10px 0;
     }
   </style>
 </head>
-<body class="bg-gray-100 text-gray-800 p-4">
-  <div class="max-w-md mx-auto">
-    <h1 class="text-2xl font-bold mb-2">Sound Hunt</h1>
-    <p class="mb-4">Walk around to discover hidden sounds nearby.</p>
-    <div id="status" class="text-green-600 mb-4">Waiting for GPS...</div>
-    <div class="mb-4">
-      <button onclick="startTracking()" class="bg-blue-500 text-white px-4 py-2 rounded mr-2">Start Tracking</button>
-      <button onclick="enableCompass()" class="bg-green-500 text-white px-4 py-2 rounded">Enable Compass</button>
-    </div>
+<body>
+  <h1>Sound Hunt</h1>
+  <p>Walk around to discover hidden sounds nearby.</p>
+  <div id="gpsStatus">Waiting for GPS...</div>
 
-    <div class="mb-4">
-      <h2 class="font-semibold">Collected Sounds</h2>
-      <ul id="collectedList" class="list-disc list-inside">
-        <li id="sound0" class="text-red-600">Sound 1: Not found</li>
-        <li id="sound1" class="text-red-600">Sound 2: Not found</li>
-        <li id="sound2" class="text-red-600">Sound 3: Not found</li>
-        <li id="sound3" class="text-red-600">Sound 4: Not found</li>
-      </ul>
-    </div>
-
-    <div class="mb-4">
-      <h2 class="font-semibold mb-2">Select Target</h2>
-      <select id="targetSelector" class="w-full p-2 border rounded">
-        <option value="0">Target 1</option>
-        <option value="1">Target 2</option>
-        <option value="2">Target 3</option>
-        <option value="3">Target 4</option>
-      </select>
-    </div>
-
-    <div class="flex justify-center items-center mb-4">
-      <img id="arrow" src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Red_Arrow_Up.svg" alt="Direction Arrow" />
-    </div>
-
-    <div class="mb-4">
-      <h2 class="font-semibold">Toggle Manual Mode</h2>
-      <div id="manualSection">
-        <div class="mb-2" id="manual0">Manual 1: <span id="coord0">-</span> <button onclick="setManual(0)" class="bg-blue-500 text-white px-2 py-1 rounded">Set</button></div>
-        <div class="mb-2" id="manual1">Manual 2: <span id="coord1">-</span> <button onclick="setManual(1)" class="bg-blue-500 text-white px-2 py-1 rounded">Set</button></div>
-        <div class="mb-2" id="manual2">Manual 3: <span id="coord2">-</span> <button onclick="setManual(2)" class="bg-blue-500 text-white px-2 py-1 rounded">Set</button></div>
-        <div class="mb-2" id="manual3">Manual 4: <span id="coord3">-</span> <button onclick="setManual(3)" class="bg-blue-500 text-white px-2 py-1 rounded">Set</button></div>
-      </div>
-    </div>
-
-    <div class="mb-4">
-      <h2 class="font-semibold">Mixer</h2>
-      <div id="mixer"></div>
-    </div>
-
-    <button onclick="soundOff()" class="bg-red-600 text-white px-4 py-2 rounded">Sound Off</button>
+  <div class="controls">
+    <button id="startTracking">Start Tracking</button>
+    <button id="enableCompass">Enable Compass</button>
   </div>
 
+  <div id="compass">
+    <div id="compassArrow"></div>
+  </div>
+
+  <div class="collected">
+    <h2>Collected Sounds</h2>
+    <p id="sound1">Sound 1: Not found</p>
+    <p id="sound2">Sound 2: Not found</p>
+    <p id="sound3">Sound 3: Not found</p>
+    <p id="sound4">Sound 4: Not found</p>
+  </div>
+
+  <div class="target">
+    <h2>Select twofoldTarget</h2>
+    <button class="targetBtn" data-target="1">Target 1</button>
+    <button class="targetBtn" data-target="2">Target 2</button>
+    <button class="targetBtn" data-target="3">Target 3</button>
+    <button class="targetBtn" data-target="4">Target 4</button>
+  </div>
+
+  <div class="manual">
+    <h2>Toggle Manual Mode</h2>
+    <button id="toggleManual">Toggle Manual Mode</button>
+    <div id="manualControls">
+      <p id="manual1">Manual 1: - Set <button class="setGps" data-point="1">Set GPS</button></p>
+      <p id="manual2">Manual 2: - Set <button class="setGps" data-point="2">Set GPS</button></p>
+      <p id="manual3">Manual 3: - Set <button class="setGps" data-point="3">Set GPS</button></p>
+      <p id="manual4">Manual 4: - Set <button class="setGps" data-point="4">Set GPS</button></p>
+    </div>
+  </div>
+
+  <div class="mixer">
+    <h2>Mixer</h2>
+    <label>Sound 1: <input type="range" id="volume1" min="0" max="1" step="0.01" value="1"></label>
+    <label>Sound 2: <input type="range" id="volume2" min="0" max="1" step="0.01" value="1"></label>
+    <label>Sound 3: <input type="range" id="volume3" min="0" max="1" step="0.01" value="1"></label>
+    <label>Sound 4: <input type="range" id="volume4" min="0" max="1" step="0.01" value="1"></label>
+  </div>
+
+  <button id="soundOff">Sound Off</button>
+
   <script>
-    const targetLocations = [
-      { lat: 63.8257, lon: 20.2630 },
-      { lat: 63.8265, lon: 20.2662 },
-      { lat: 63.8249, lon: 20.2688 },
-      { lat: 63.8234, lon: 20.2640 }
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let isTracking = false;
+    let isCompassEnabled = false;
+    let manualMode = false;
+    let currentPosition = null;
+    let targetPoints = [
+      { lat: null, lng: null, set: false, sound: null, found: false },
+      { lat: null, lng: null, set: false, sound: null, found: false },
+      { lat: null, lng: null, set: false, sound: null, found: false },
+      { lat: null, lng: null, set: false, sound: null, found: false }
     ];
+    let selectedTarget = null;
+    let sounds = [];
+    let beepSource = null;
+    let lastBeepTime = 0;
 
-    const trackURLs = [
-      'sound1.wav',
-      'sound2.wav',
-      'sound3.wav',
-      'sound4.wav'
-    ];
-
-    const unlocked = [false, false, false, false];
-    const activeZones = [false, false, false, false];
-    const played = [false, false, false, false];
-    const audioSources = [null, null, null, null];
-    const gainNodes = [null, null, null, null];
-    let collected = 0;
-    let beepInterval = null;
-    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    let currentLat = 0;
-    let currentLon = 0;
-
-    const statusEl = document.getElementById('status');
-    const arrowEl = document.getElementById('arrow');
-    const targetSelector = document.getElementById('targetSelector');
-
-    function getDistance(lat1, lon1, lat2, lon2) {
-      const R = 6371e3;
-      const toRad = x => x * Math.PI / 180;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    // Generate simple sine wave sounds for each target
+    function createSound(frequency) {
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination); // Fixed: Connect to audioCtx.destination
+      return { oscillator, gainNode };
     }
 
-    function getBearing(lat1, lon1, lat2, lon2) {
-      const toRad = x => x * Math.PI / 180;
-      const toDeg = x => x * 180 / Math.PI;
-      const dLon = toRad(lon2 - lon1);
-      const y = Math.sin(dLon) * Math.cos(toRad(lat2));
-      const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
-                Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
-      return (toDeg(Math.atan2(y, x)) + 360) % 360;
+    // Create beep sound
+    function createBeep() {
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.type = 'square';
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination); // Fixed: Connect to audioCtx.destination
+      return { oscillator, gainNode };
     }
 
-    function updateArrow(bearing) {
-      arrowEl.style.transform = `rotate(${bearing}deg)`;
+    // Load sounds
+    function loadSounds() {
+      sounds = [
+        createSound(440), // A4
+        createSound(523.25), // C5
+        createSound(659.25), // E5
+        createSound(783.99) // G5
+      ];
     }
 
-    function startBeeping(distance) {
-      const interval = Math.max(300, distance * 10);
-      if (beepInterval) clearInterval(beepInterval);
-      beepInterval = setInterval(() => {
-        const beep = new Audio('/beep.wav');
-        beep.play();
-      }, interval);
-    }
-
-    function stopBeeping() {
-      if (beepInterval) {
-        clearInterval(beepInterval);
-        beepInterval = null;
+    // Play sound multiple times
+    function playSound(index, times = 1) {
+      if (!sounds[index].oscillator.started) {
+        sounds[index].oscillator.start();
+        sounds[index].oscillator.started = true;
       }
-    }
-
-    async function playSound(index) {
-      if (audioSources[index]) return;
-      const res = await fetch(trackURLs[index]);
-      const buf = await res.arrayBuffer();
-      const audioBuf = await audioCtx.decodeAudioData(buf);
-      const source = audioCtx.createBufferSource();
-      const gain = audioCtx.createGain();
-      source.buffer = audioBuf;
-      source.connect(gain);
-      gain.connect(audioCtx.destination);
-      gain.gain.value = 1;
-      gainNodes[index] = gain;
-      audioSources[index] = source;
-      source.loop = true;
-      source.start();
-
-      const mixer = document.getElementById('mixer');
-      const slider = document.createElement('input');
-      slider.type = 'range';
-      slider.min = 0;
-      slider.max = 1;
-      slider.step = 0.01;
-      slider.value = 1;
-      slider.oninput = () => gain.gain.value = slider.value;
-      mixer.appendChild(slider);
-    }
-
-    async function unlockSound(index) {
-      if (!unlocked[index]) {
-        unlocked[index] = true;
-        document.getElementById(`sound${index}`).textContent = `Sound ${index + 1}: Found!`;
-        document.getElementById(`sound${index}`).classList.replace("text-red-600", "text-green-600");
-        collected++;
-        if (collected === 4) setTimeout(() => alert("Well done! All sounds collected."), 500);
-      }
-      stopBeeping();
-      await playSound(index);
-    }
-
-    function setManual(index) {
-      targetLocations[index] = { lat: currentLat, lon: currentLon };
-      played[index] = false;
-      document.getElementById(`coord${index}`).textContent = `${currentLat.toFixed(5)}, ${currentLon.toFixed(5)}`;
-    }
-
-    function soundOff() {
-      audioSources.forEach(src => src && src.stop());
-      audioSources.fill(null);
-      gainNodes.fill(null);
-      document.getElementById('mixer').innerHTML = '';
-    }
-
-    let watchId = null;
-function startTracking() {
-  if (!navigator.geolocation) {
-    statusEl.textContent = "Geolocation not supported by your browser.";
-    return;
-  }
-  statusEl.textContent = "Requesting GPS...";
-  watchId = navigator.geolocation.watchPosition(pos => {
-      const { latitude, longitude } = pos.coords;
-      currentLat = latitude;
-      currentLon = longitude;
-      statusEl.textContent = `Current location: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-
-      for (let i = 0; i < 4; i++) {
-        document.getElementById(`coord${i}`).textContent = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-      }
-
-      const targetIndex = parseInt(targetSelector.value);
-      const target = targetLocations[targetIndex];
-      const bearing = getBearing(currentLat, currentLon, target.lat, target.lon);
-      updateArrow(bearing);
-
-      for (let i = 0; i < targetLocations.length; i++) {
-        const dist = getDistance(latitude, longitude, targetLocations[i].lat, targetLocations[i].lon);
-
-        if (dist < 10) {
-          if (!activeZones[i]) {
-            activeZones[i] = true;
-            unlockSound(i);
-          }
-        } else if (dist < 50) {
-          startBeeping(dist);
-        } else {
-          stopBeeping();
-          activeZones[i] = false;
+      sounds[index].gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+      setTimeout(() => {
+        sounds[index].gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        if (times > 1) {
+          setTimeout(() => playSound(index, times - 1), 1000);
         }
+      }, 500);
+    }
+
+    // Play beep based on distance
+    function playBeep(distance) {
+      const now = Date.now();
+      const interval = Math.max(100, 1000 - distance * 30); // Faster beep as closer
+      if (now - lastBeepTime < interval) return;
+      lastBeepTime = now;
+      if (!beepSource) {
+        beepSource = createBeep();
+        beepSource.oscillator.start();
       }
-    }, err => {
-      statusEl.textContent = 'Error getting GPS location.';
+      beepSource.gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      setTimeout(() => {
+        beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      }, 100);
+    }
+
+    // Calculate distance between two GPS points (in meters)
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3; // Earth's radius in meters
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // Calculate bearing for compass
+    function getBearing(lat1, lon1, lat2, lon2) {
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) -
+                Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      const θ = Math.atan2(y, x);
+      return (θ * 180 / Math.PI + 360) % 360;
+    }
+
+    // Update compass
+    function updateCompass() {
+      if (!isCompassEnabled || !selectedTarget || !currentPosition || !targetPoints[selectedTarget - 1].set) return;
+      const target = targetPoints[selectedTarget - 1];
+      const bearing = getBearing(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng);
+      const compassArrow = document.getElementById('compassArrow');
+      compassArrow.style.transform = `rotate(${bearing}deg)`;
+    }
+
+    // Update GPS status and proximity checks
+    function updatePosition(position) {
+      currentPosition = position.coords;
+      document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
+      if (isTracking) {
+        targetPoints.forEach((point, index) => {
+          if (point.set) {
+            const distance = getDistance(currentPosition.latitude, currentPosition.longitude, point.lat, point.lng);
+            if (distance < 10 && !point.found) {
+              point.found = true;
+              document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
+              playSound(index, 3);
+            } else if (distance < 30) {
+              playBeep(distance);
+            }
+          }
+        });
+      }
+      updateCompass();
+    }
+
+    // Handle GPS errors
+    function handleError(error) {
+      document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
+    }
+
+    // Start tracking
+    document.getElementById('startTracking').addEventListener('click', () => {
+      if (!isTracking) {
+        navigator.geolocation.watchPosition(updatePosition, handleError, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+        isTracking = true;
+        document.getElementById('startTracking').textContent = 'Stop Tracking';
+      } else {
+        isTracking = false;
+        document.getElementById('startTracking').textContent = 'Start Tracking';
+      }
     });
 
-    function enableCompass() {
-  if (typeof DeviceOrientationEvent !== 'undefined' &&
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission()
-      .then(response => {
-        if (response === 'granted') {
-          window.addEventListener('deviceorientation', handleOrientation);
-        } else {
-          alert('Compass permission denied');
-        }
-      }).catch(console.error);
-  } else {
-    window.addEventListener('deviceorientation', handleOrientation);
-  }
-}
+    // Enable compass
+    document.getElementById('enableCompass').addEventListener('click', () => {
+      isCompassEnabled = !isCompassEnabled;
+      document.getElementById('enableCompass').textContent = isCompassEnabled ? 'Disable Compass' : 'Enable Compass';
+      if (isCompassEnabled) updateCompass();
+      else document.getElementById('compassArrow').style.transform = 'rotate(0deg)';
+    });
 
-function handleOrientation(event) {
-  if (event.alpha !== null) {
-    const heading = 360 - event.alpha; // compass-style
-    arrowEl.style.transform = `rotate(${heading}deg)`;
-  }
-}
+    // Toggle manual mode
+    document.getElementById('toggleManual').addEventListener('click', () => {
+      manualMode = !manualMode;
+      document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
+      document.getElementById('toggleManual').textContent = manualMode ? 'Disable Manual Mode' : 'Toggle Manual Mode';
+    });
 
-
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').then(() => {
-          console.log('Service Worker Registered');
-        });
+    // Set GPS points
+    document.querySelectorAll('.setGps').forEach(button => {
+      button.addEventListener('click', () => {
+        if (!currentPosition || !manualMode) return;
+        const pointIndex = parseInt(button.dataset.point) - 1;
+        targetPoints[pointIndex].lat = currentPosition.latitude;
+        targetPoints[pointIndex].lng = currentPosition.longitude;
+        targetPoints[pointIndex].set = true;
+        document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+        playSound(pointIndex, 3);
       });
-    }
+    });
+
+    // Select target
+    document.querySelectorAll('.targetBtn').forEach(button => {
+      button.addEventListener('click', () => {
+        selectedTarget = parseInt(button.dataset.target);
+        document.querySelectorAll('.targetBtn').forEach(btn => btn.style.backgroundColor = '#4CAF50');
+        button.style.backgroundColor = '#45a049';
+        updateCompass();
+      });
+    });
+
+    // Volume controls
+    document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
+      slider.addEventListener('input', () => {
+        sounds[index].gainNode.gain.setValueAtTime(slider.value, audioCtx.currentTime);
+      });
+    });
+
+    // Sound off
+    document.getElementById('soundOff').addEventListener('click', () => {
+      sounds.forEach(sound => {
+        sound.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      });
+      if (beepSource) {
+        beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      }
+    });
+
+    // Initialize
+    loadSounds();
   </script>
 </body>
 </html>
-
