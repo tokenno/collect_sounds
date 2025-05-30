@@ -94,10 +94,10 @@
     ];
 
     const trackURLs = [
-      'https://yourserver.com/track1.mp3',
-      'https://yourserver.com/track2.mp3',
-      'https://yourserver.com/track3.mp3',
-      'https://yourserver.com/track4.mp3'
+      '/sound1.wav',
+      '/sound2.wav',
+      '/sound3.wav',
+      '/sound4.wav'
     ];
 
     const unlocked = [false, false, false, false];
@@ -142,7 +142,7 @@
       if (beepInterval) clearInterval(beepInterval);
       beepInterval = setInterval(() => {
         if (!muted) {
-          const beep = new Audio('https://yourserver.com/beep.mp3');
+          const beep = new Audio('/beep.wav');
           beep.play();
         }
       }, interval);
