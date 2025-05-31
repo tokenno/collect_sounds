@@ -100,6 +100,9 @@
     button:not(.start-tracking).active:hover {
       background: #d81b60;
     }
+    button.record-btn.active {
+      background: #ffca28; /* Yellow when recording */
+    }
     .centered-section {
       display: flex;
       flex-direction: column;
@@ -335,18 +338,88 @@
     let manualMode = false;
     let currentPosition = null;
     let targetPoints = [
-      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true }
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
     ];
     let selectedTarget = null;
-    let audioBuffers = [null, null, null, null]; // Store decoded audio buffers
+    let audioBuffers = [null, null, null, null]; // Store decoded default audio buffers
+    let recordedBuffers = [null, null, null, null]; // Store decoded recorded audio buffers
     let sounds = []; // Store active sound sources
     let gainNodes = []; // Store gain nodes for volume control
     let beepSource = null;
     let lastBeepTime = 0;
     let foundCount = 0;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    // IndexedDB setup
+    const DB_NAME = 'SoundHuntDB';
+    const STORE_NAME = 'recordings';
+    let db;
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        };
+      });
+    }
+
+    // Save recording to IndexedDB
+    function saveRecording(index, blob) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const record = { id: `recordedSound${index}`, blob: blob };
+        const request = store.put(record);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // Load recordings from IndexedDB
+    function loadRecordings() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const recordings = [];
+        for (let i = 0; i < 4; i++) {
+          const request = store.get(`recordedSound${i}`);
+          request.onsuccess = () => {
+            if (request.result) {
+              recordings[i] = request.result.blob;
+              targetPoints[i].hasRecording = true;
+            } else {
+              recordings[i] = null;
+              targetPoints[i].hasRecording = false;
+            }
+            if (i === 3) resolve(recordings); // Resolve when all requests are done
+          };
+          request.onerror = () => reject(request.error);
+        }
+      });
+    }
+
+    // Clear recordings from IndexedDB
+    function clearRecordings() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
 
     // Update debug status
     function updateDebugStatus(message) {
@@ -387,7 +460,8 @@
           ...point,
           sound: null,
           found: false,
-          discoveryEligible: true
+          discoveryEligible: true,
+          hasRecording: targetPoints[parsedPoints.indexOf(point)]?.hasRecording || false
         }));
         targetPoints.forEach((point, index) => {
           if (point.lat && point.lng) {
@@ -409,7 +483,7 @@
       }
     }
 
-    // Preload audio files
+    // Preload default audio files
     async function preloadAudioFiles() {
       const audioFiles = ['sound1.wav', 'sound2.wav', 'sound3.wav', 'sound4.wav'];
       for (let i = 0; i < audioFiles.length; i++) {
@@ -426,9 +500,34 @@
       }
     }
 
+    // Decode recorded audio blobs into audio buffers
+    async function decodeRecordedAudio() {
+      const recordings = await loadRecordings();
+      for (let i = 0; i < recordings.length; i++) {
+        if (recordings[i]) {
+          try {
+            const arrayBuffer = await recordings[i].arrayBuffer();
+            recordedBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
+            updateDebugStatus(`Decoded recorded audio for Target ${i + 1}`);
+          } catch (error) {
+            updateDebugStatus(`Error decoding recorded audio for Target ${i + 1}: ${error.message}`);
+          }
+        }
+      }
+    }
+
     // Create and play audio, with option to loop or play once
     async function playSound(index, loop = false) {
-      if (!audioBuffers[index]) {
+      let bufferToPlay = null;
+
+      // Check if there's a recorded sound for this target
+      if (targetPoints[index].hasRecording && recordedBuffers[index]) {
+        bufferToPlay = recordedBuffers[index];
+        updateDebugStatus(`Using recorded sound for Target ${index + 1}`);
+      } else if (audioBuffers[index]) {
+        bufferToPlay = audioBuffers[index];
+        updateDebugStatus(`Using default sound for Target ${index + 1}`);
+      } else {
         updateMessage(`Audio not loaded for Sound ${index + 1}`, 'warning');
         updateDebugStatus(`Audio not loaded for Sound ${index + 1}`);
         return;
@@ -450,7 +549,7 @@
 
       // Create a new audio source
       const source = audioCtx.createBufferSource();
-      source.buffer = audioBuffers[index];
+      source.buffer = bufferToPlay;
       source.loop = loop; // Loop if specified
       source.connect(gainNodes[index]);
       try {
@@ -592,18 +691,19 @@
     }
 
     // Reset all states
-    function resetAll() {
+    async function resetAll() {
       isTracking = false;
       isCompassEnabled = false;
       manualMode = false;
       selectedTarget = null;
       foundCount = 0;
       targetPoints = [
-        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true }
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
       ];
+      recordedBuffers = [null, null, null, null];
       document.getElementById('startTracking').textContent = 'Start Tracking';
       document.getElementById('startTracking').classList.remove('active');
       document.getElementById('enableCompass').textContent = 'Enable Compass';
@@ -632,6 +732,17 @@
         beepSource.oscillator.stop();
         beepSource = null;
       }
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        isRecording = false;
+        document.querySelectorAll('.record-btn').forEach(btn => btn.classList.remove('active'));
+      }
+      try {
+        await clearRecordings();
+        updateDebugStatus('All recordings cleared from storage');
+      } catch (error) {
+        updateDebugStatus(`Error clearing recordings: ${error.message}`);
+      }
       loadAdminCoordinates();
       // Reattach event listeners after reset
       document.querySelectorAll('.setGps').forEach(button => {
@@ -656,11 +767,70 @@
       targetPoints[pointIndex].lng = currentPosition.longitude;
       targetPoints[pointIndex].set = true;
       targetPoints[pointIndex].discoveryEligible = false;
-      document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+      document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>`;
       updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
       button.classList.add('active');
       // Play the sound once (no looping) when setting the point
       playSound(pointIndex, false);
+      // Reattach record button event listeners
+      document.querySelectorAll('.record-btn').forEach(btn => {
+        btn.addEventListener('click', recordSoundHandler);
+      });
+    }
+
+    // Record sound handler
+    async function recordSoundHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+
+      if (!isRecording) {
+        // Start recording
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          recordedChunks = [];
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              recordedChunks.push(e.data);
+            }
+          };
+          mediaRecorder.onstop = async () => {
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            try {
+              // Save to IndexedDB
+              await saveRecording(pointIndex, blob);
+              // Decode for playback
+              const arrayBuffer = await blob.arrayBuffer();
+              recordedBuffers[pointIndex] = await audioCtx.decodeAudioData(arrayBuffer);
+              targetPoints[pointIndex].hasRecording = true;
+              updateDebugStatus(`Recording saved for Target ${pointIndex + 1}`);
+              updateMessage(`Recording saved for Target ${pointIndex + 1}`, 'success');
+            } catch (error) {
+              updateDebugStatus(`Error saving recording for Target ${pointIndex + 1}: ${error.message}`);
+              updateMessage(`Error saving recording`, 'error');
+            }
+            // Stop the stream
+            stream.getTracks().forEach(track => track.stop());
+          };
+          mediaRecorder.start();
+          isRecording = true;
+          button.classList.add('active');
+          button.textContent = 'Stop Recording';
+          updateDebugStatus(`Started recording for Target ${pointIndex + 1}`);
+        } catch (error) {
+          updateMessage(`Failed to access microphone: ${error.message}`, 'error');
+          updateDebugStatus(`Microphone access error: ${error.message}`);
+        }
+      } else {
+        // Stop recording
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+        isRecording = false;
+        button.classList.remove('active');
+        button.textContent = 'Record Sound';
+        updateDebugStatus(`Stopped recording for Target ${pointIndex + 1}`);
+      }
     }
 
     // Update GPS status and proximity checks
@@ -746,10 +916,10 @@
       if (manualMode && localStorage.getItem('targetPoints')) {
         updateMessage('Warning: Manual mode enabled, admin points ignored.', 'warning');
         targetPoints = [
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true }
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
         ];
         for (let i = 1; i <= 4; i++) {
           document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
@@ -808,6 +978,14 @@
         beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
         updateDebugStatus('Beep sound stopped');
       }
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        isRecording = false;
+        document.querySelectorAll('.record-btn').forEach(btn => {
+          btn.classList.remove('active');
+          btn.textContent = 'Record Sound';
+        });
+      }
       updateDebugStatus('All sounds stopped');
     });
 
@@ -815,10 +993,20 @@
     document.getElementById('resetAll').addEventListener('click', resetAll);
 
     // Initialize
-    initializeGainNodes();
-    preloadAudioFiles().then(() => {
-      loadAdminCoordinates();
-    });
+    async function initialize() {
+      try {
+        await openDB();
+        await preloadAudioFiles();
+        await decodeRecordedAudio();
+        loadAdminCoordinates();
+        updateDebugStatus('App initialized');
+      } catch (error) {
+        updateDebugStatus(`Initialization error: ${error.message}`);
+        updateMessage('Failed to initialize app', 'error');
+      }
+    }
+
+    initialize();
   </script>
 </body>
 </html>
