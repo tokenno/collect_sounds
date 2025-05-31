@@ -138,7 +138,6 @@
       transition: transform 0.2s;
       display: flex;
       flex-direction: column;
-      align-items: center;
       justify-content: flex-start; /* Align content to the top */
       min-height: 150px;
     }
@@ -154,18 +153,20 @@
     }
     .controls, .target, .collected, .manual {
       gap: 5px;
-      width: 100%; /* Ensure the inner container takes full width */
-      margin-top: 0; /* Remove any top margin */
+      width: 100%;
+      margin-top: 0;
     }
     .controls {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
+      align-items: flex-start; /* Ensure wrapped items start at the top */
     }
     .target {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
+      align-items: flex-start; /* Ensure wrapped items start at the top */
     }
     .collected p {
       margin: 2px 0;
@@ -374,7 +375,6 @@
     let recordedChunks = [];
     let isRecording = false;
 
-    // IndexedDB setup
     const DB_NAME = 'SoundHuntDB';
     const STORE_NAME = 'recordings';
     let db;
@@ -482,12 +482,15 @@
       const storedPoints = localStorage.getItem('targetPoints');
       if (storedPoints) {
         const parsedPoints = JSON.parse(storedPoints);
-        targetPoints = parsedPoints.map(point => ({
+        targetPoints = parsedPoints.map((point, index) => ({
           ...point,
           sound: null,
           found: false,
           discoveryEligible: true,
-          hasRecording: targetPoints[parsedPoints.indexOf(point)]?.hasRecording || false
+          hasRecording: targetPoints[index]?.hasRecording || false,
+          lat: targetPoints[index]?.hasRecording ? targetPoints[index].lat : point.lat,
+          lng: targetPoints[index]?.hasRecording ? targetPoints[index].lng : point.lng,
+          set: targetPoints[index]?.hasRecording ? true : point.set
         }));
         targetPoints.forEach((point, index) => {
           if (point.lat && point.lng) {
@@ -770,7 +773,7 @@
       requestAnimationFrame(updateCompass);
     }
 
-    async function resetAll() {
+    async function resetAll(isAutomatic = false) {
       isTracking = false;
       isCompassEnabled = false;
       manualMode = false;
@@ -782,13 +785,35 @@
       document.getElementById('soundToggle').classList.remove('active');
       selectedTarget = null;
       foundCount = 0;
-      targetPoints = [
-        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
-      ];
-      recordedBuffers = [null, null, null, null];
+
+      if (isAutomatic) {
+        // Automatic reset: Preserve GPS points and recordings
+        targetPoints = targetPoints.map(point => ({
+          lat: point.lat,
+          lng: point.lng,
+          set: point.set,
+          sound: null,
+          found: false,
+          discoveryEligible: true,
+          hasRecording: point.hasRecording
+        }));
+      } else {
+        // Manual reset: Delete everything
+        targetPoints = [
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
+        ];
+        recordedBuffers = [null, null, null, null];
+        try {
+          await clearRecordings();
+          updateDebugStatus('All recordings cleared from storage');
+        } catch (error) {
+          updateDebugStatus(`Error clearing recordings: ${error.message}`);
+        }
+      }
+
       document.getElementById('startTracking').textContent = 'Start Tracking';
       document.getElementById('startTracking').classList.remove('active');
       document.getElementById('enableCompass').textContent = 'Enable Compass';
@@ -822,16 +847,11 @@
         isRecording = false;
         document.querySelectorAll('.record-btn').forEach(btn => btn.classList.remove('active'));
       }
-      try {
-        await clearRecordings();
-        updateDebugStatus('All recordings cleared from storage');
-      } catch (error) {
-        updateDebugStatus(`Error clearing recordings: ${error.message}`);
-      }
       loadAdminCoordinates();
       document.querySelectorAll('.setGps').forEach(button => {
         button.addEventListener('click', setGpsHandler);
       });
+      updateRecordingUI();
     }
 
     function setGpsHandler(event) {
@@ -938,6 +958,9 @@
         await deleteRecording(pointIndex);
         targetPoints[pointIndex].hasRecording = false;
         recordedBuffers[pointIndex] = null;
+        targetPoints[pointIndex].lat = null;
+        targetPoints[pointIndex].lng = null;
+        targetPoints[pointIndex].set = false;
         updateDebugStatus(`Recording deleted for Target ${pointIndex + 1}`);
         updateMessage(`Recording deleted for Target ${pointIndex + 1}`, 'success');
         updateRecordingUI();
@@ -1036,12 +1059,15 @@
       updateDebugStatus(`Manual mode: ${manualMode}`);
       if (manualMode && localStorage.getItem('targetPoints')) {
         updateMessage('Warning: Manual mode enabled, admin points ignored.', 'warning');
-        targetPoints = [
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
-        ];
+        targetPoints = targetPoints.map(point => ({
+          lat: point.lat,
+          lng: point.lng,
+          set: point.set,
+          sound: null,
+          found: false,
+          discoveryEligible: true,
+          hasRecording: point.hasRecording
+        }));
         for (let i = 1; i <= 4; i++) {
           document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
           document.querySelectorAll(`.setGps[data-point="${i}"]`)[0].classList.remove('active');
@@ -1120,13 +1146,14 @@
       }
     });
 
-    document.getElementById('resetAll').addEventListener('click', resetAll);
+    document.getElementById('resetAll').addEventListener('click', () => resetAll(false));
 
     async function initialize() {
       try {
         await openDB();
         await preloadAudioFiles();
         await decodeRecordedAudio();
+        await resetAll(true); // Automatic reset on page load, preserving GPS points and recordings
         updateRecordingUI();
         loadAdminCoordinates();
         updateDebugStatus('App initialized');
