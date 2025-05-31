@@ -15,17 +15,18 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      overflow-x: hidden;
     }
     h1, h2 {
       color: #00d4ff;
       text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
-      margin: 10px 0;
+      margin: 5px 0;
     }
     h1 {
       font-size: 2em;
     }
     h2 {
-      font-size: 1.2em;
+      font-size: 1em;
     }
     #gpsStatus, #message, #debugStatus {
       font-size: 0.9em;
@@ -33,9 +34,9 @@
       padding: 5px;
       background: rgba(255, 255, 255, 0.1);
       border-radius: 6px;
+      text-align: center;
       width: 90%;
       max-width: 350px;
-      text-align: center;
     }
     #message.success {
       color: #00e676;
@@ -74,12 +75,13 @@
       transform: scale(1.05);
     }
     .container {
-      width: 90%;
-      max-width: 400px;
-      display: flex;
-      flex-direction: column;
+      width: 100%;
+      max-width: 1200px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 10px;
-      padding: 10px 0;
+      flex-grow: 1;
     }
     .card {
       background: rgba(255, 255, 255, 0.05);
@@ -87,32 +89,29 @@
       padding: 10px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       transition: transform 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     .card:hover {
       transform: translateY(-2px);
     }
     .controls, .target, .manual, .collected, .mixer {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       gap: 5px;
     }
-    #compassCanvas {
-      margin: 10px auto;
-      border: 2px solid #00d4ff;
-      border-radius: 50%;
-      background: #0f0f0f;
-      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
     }
-    #fallbackArrow {
-      display: none;
-      width: 0;
-      height: 0;
-      border-left: 15px solid transparent;
-      border-right: 15px solid transparent;
-      border-bottom: 30px solid #ff1744;
-      margin: 10px auto;
-      transform-origin: center bottom;
+    .target {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .collected p {
+      margin: 2px 0;
+      font-size: 0.9em;
     }
     .mixer label {
       display: flex;
@@ -136,8 +135,33 @@
       margin: 0 3px;
       padding: 6px 12px;
     }
+    #compassCanvas {
+      border: 2px solid #00d4ff;
+      border-radius: 50%;
+      background: #0f0f0f;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
+    #fallbackArrow {
+      display: none;
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-bottom: 30px solid #ff1744;
+      margin: 10px auto;
+      transform-origin: center bottom;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+    }
     .footer {
-      margin-top: auto;
       padding: 10px 0;
       display: flex;
       gap: 10px;
@@ -146,11 +170,14 @@
       background: rgba(255, 255, 255, 0.05);
     }
     @media (max-width: 600px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
       h1 {
         font-size: 1.5em;
       }
       h2 {
-        font-size: 1em;
+        font-size: 0.9em;
       }
       button, a.footer-link {
         padding: 6px 12px;
@@ -166,35 +193,30 @@
       #gpsStatus, #message, #debugStatus {
         font-size: 0.8em;
       }
+      #compassCanvas {
+        width: 120px;
+        height: 120px;
+      }
     }
   </style>
 </head>
 <body>
+  <h1>Sound Hunt</h1>
+  <p>Explore and discover hidden sounds around you!</p>
+  <div id="gpsStatus">Waiting for GPS...</div>
+  <div id="message"></div>
+  <div id="debugStatus"></div>
+
+  <canvas id="compassCanvas" width="150" height="150"></canvas>
+  <div id="fallbackArrow"></div>
+
   <div class="container">
-    <h1>Sound Hunt</h1>
-    <p>Explore and discover hidden sounds around you!</p>
-    <div id="gpsStatus">Waiting for GPS...</div>
-    <div id="message"></div>
-
-    <div class="card">
-      <canvas id="compassCanvas" width="150" height="150"></canvas>
-      <div id="fallbackArrow"></div>
-    </div>
-
-    <div id="debugStatus"></div>
-
     <div class="card controls">
+      <h2>Controls</h2>
       <button id="startTracking">Start Tracking</button>
       <button id="enableCompass">Enable Compass</button>
       <button id="resetAll">Reset All</button>
-    </div>
-
-    <div class="card collected">
-      <h2>Collected Sounds</h2>
-      <p id="sound1">Sound 1: Not found</p>
-      <p id="sound2">Sound 2: Not found</p>
-      <p id="sound3">Sound 3: Not found</p>
-      <p id="sound4">Sound 4: Not found</p>
+      <button id="soundOff">Sound Off</button>
     </div>
 
     <div class="card target">
@@ -205,8 +227,16 @@
       <button class="targetBtn" data-target="4">Target 4</button>
     </div>
 
+    <div class="card collected">
+      <h2>Collected Sounds</h2>
+      <p id="sound1">Sound 1: Not found</p>
+      <p id="sound2">Sound 2: Not found</p>
+      <p id="sound3">Sound 3: Not found</p>
+      <p id="sound4">Sound 4: Not found</p>
+    </div>
+
     <div class="card manual">
-      <h2>Toggle Manual Mode</h2>
+      <h2>Manual Mode</h2>
       <button id="toggleManual" title="Enable to set your own points">Toggle Manual Mode</button>
       <div id="manualControls" style="display: none;">
         <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button></p>
@@ -223,8 +253,6 @@
       <label>Sound 3: <input type="range" id="volume3" min="0" max="1" step="0.01" value="1"></label>
       <label>Sound 4: <input type="range" id="volume4" min="0" max="1" step="0.01" value="1"></label>
     </div>
-
-    <button id="soundOff">Sound Off</button>
   </div>
 
   <div class="footer">
@@ -502,7 +530,7 @@
       targetPoints[pointIndex].lng = currentPosition.longitude;
       targetPoints[pointIndex].set = true;
       targetPoints[pointIndex].discoveryEligible = false;
-      document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+      document.getElementById(`manual${index + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
       updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
       button.classList.add('active');
       playSound(pointIndex, 3);
