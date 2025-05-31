@@ -427,10 +427,19 @@
     }
 
     // Create and play audio, with option to loop or play once
-    function playSound(index, loop = false) {
+    async function playSound(index, loop = false) {
       if (!audioBuffers[index]) {
         updateMessage(`Audio not loaded for Sound ${index + 1}`, 'warning');
+        updateDebugStatus(`Audio not loaded for Sound ${index + 1}`);
         return;
+      }
+
+      // Ensure AudioContext is resumed (mobile browsers may suspend it)
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+        updateDebugStatus(`AudioContext resumed, state: ${audioCtx.state}`);
+      } else {
+        updateDebugStatus(`AudioContext state: ${audioCtx.state}`);
       }
 
       // Stop any existing sound for this index
@@ -444,7 +453,15 @@
       source.buffer = audioBuffers[index];
       source.loop = loop; // Loop if specified
       source.connect(gainNodes[index]);
-      source.start();
+      try {
+        source.start();
+        updateDebugStatus(`Playing Sound ${index + 1}, loop: ${loop}, volume: ${gainNodes[index].gain.value}`);
+      } catch (error) {
+        updateDebugStatus(`Error playing Sound ${index + 1}: ${error.message}`);
+        updateMessage(`Error playing Sound ${index + 1}`, 'error');
+        return;
+      }
+
       if (!loop) {
         // Stop the sound after it plays once (duration of the audio buffer)
         source.onended = () => {
@@ -470,11 +487,18 @@
     }
 
     // Play beep based on distance
-    function playBeep(distance) {
+    async function playBeep(distance) {
       const now = Date.now();
       const interval = Math.max(100, 1000 - distance * 30);
       if (now - lastBeepTime < interval) return;
       lastBeepTime = now;
+
+      // Ensure AudioContext is resumed for beep
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+        updateDebugStatus(`AudioContext resumed for beep, state: ${audioCtx.state}`);
+      }
+
       if (!beepSource) {
         beepSource = createBeep();
         beepSource.oscillator.start();
@@ -483,6 +507,7 @@
       setTimeout(() => {
         beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
       }, 100);
+      updateDebugStatus(`Beep played, distance: ${distance.toFixed(2)}m`);
     }
 
     // Calculate distance between two GPS points (in meters)
@@ -666,6 +691,7 @@
                 // Stop the sound if moving outside 30 meters
                 sounds[index].stop();
                 sounds[index] = null;
+                updateDebugStatus(`Stopped Sound ${index + 1} (distance: ${distance.toFixed(2)}m)`);
               }
             }
           }
@@ -764,13 +790,23 @@
     });
 
     // Sound off
-    document.getElementById('soundOff').addEventListener('click', () => {
+    document.getElementById('soundOff').addEventListener('click', async () => {
+      const soundOffButton = document.getElementById('soundOff');
+      // Add active class for visual feedback
+      soundOffButton.classList.add('active');
+      // Remove active class after 1 second
+      setTimeout(() => {
+        soundOffButton.classList.remove('active');
+      }, 1000);
+
+      // Stop all sounds
       sounds.forEach(sound => {
         if (sound) sound.stop();
       });
       sounds = [];
       if (beepSource) {
         beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        updateDebugStatus('Beep sound stopped');
       }
       updateDebugStatus('All sounds stopped');
     });
