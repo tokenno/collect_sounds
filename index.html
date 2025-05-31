@@ -29,7 +29,7 @@
     h2 {
       font-size: 1em;
     }
-    #gpsStatus, #message, #debugStatus {
+    #gpsStatus, #message, #debugStatus, #targetDistance {
       font-size: 0.9em;
       margin: 5px 0;
       padding: 5px;
@@ -242,7 +242,7 @@
         padding: 5px 10px;
         font-size: 0.8em;
       }
-      #gpsStatus, #message, #debugStatus {
+      #gpsStatus, #message, #debugStatus, #targetDistance {
         font-size: 0.8em;
       }
       #compassCanvas {
@@ -267,6 +267,7 @@
   <div id="gpsStatus">Waiting for GPS...</div>
   <div id="message"></div>
   <div id="debugStatus"></div>
+  <div id="targetDistance"></div>
 
   <div class="centered-section">
     <button id="startTracking" class="start-tracking">Start Tracking</button>
@@ -364,6 +365,17 @@
       console.log('Message:', message, type);
     }
 
+    // Update target distance display
+    function updateTargetDistance() {
+      if (!currentPosition || !selectedTarget || !targetPoints[selectedTarget - 1].set) {
+        document.getElementById('targetDistance').textContent = '';
+        return;
+      }
+      const target = targetPoints[selectedTarget - 1];
+      const distance = getDistance(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng).toFixed(2);
+      document.getElementById('targetDistance').textContent = `Distance to Target ${selectedTarget}: ${distance} meters`;
+    }
+
     // Load admin-set coordinates from localStorage
     function loadAdminCoordinates() {
       if (manualMode) return; // Skip if manual mode is active
@@ -413,8 +425,8 @@
       }
     }
 
-    // Create and play audio in a loop
-    function playSound(index) {
+    // Create and play audio, with option to loop or play once
+    function playSound(index, loop = false) {
       if (!audioBuffers[index]) {
         updateMessage(`Audio not loaded for Sound ${index + 1}`, 'warning');
         return;
@@ -423,16 +435,25 @@
       // Stop any existing sound for this index
       if (sounds[index]) {
         sounds[index].stop();
+        sounds[index] = null;
       }
 
       // Create a new audio source
       const source = audioCtx.createBufferSource();
       source.buffer = audioBuffers[index];
-      source.loop = true; // Enable looping
+      source.loop = loop; // Loop if specified
       source.connect(gainNodes[index]);
       source.start();
-      sounds[index] = source;
-      updateDebugStatus(`Playing Sound ${index + 1} in loop`);
+      if (!loop) {
+        // Stop the sound after it plays once (duration of the audio buffer)
+        source.onended = () => {
+          sounds[index] = null;
+          updateDebugStatus(`Sound ${index + 1} finished playing once`);
+        };
+      } else {
+        sounds[index] = source;
+        updateDebugStatus(`Playing Sound ${index + 1} in loop`);
+      }
     }
 
     // Create beep sound
@@ -568,6 +589,7 @@
       updateMessage('');
       updateDebugStatus('');
       document.getElementById('fallbackArrow').style.display = 'none';
+      document.getElementById('targetDistance').textContent = '';
       document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.setGps').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('input[type="range"]').forEach(slider => slider.value = 1);
@@ -611,19 +633,23 @@
       document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
       updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
       button.classList.add('active');
-      playSound(pointIndex);
+      // Play the sound once (no looping) when setting the point
+      playSound(pointIndex, false);
     }
 
     // Update GPS status and proximity checks
     function updatePosition(position) {
       currentPosition = position.coords;
       document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
+      updateTargetDistance(); // Update distance display
       if (isTracking) {
         targetPoints.forEach((point, index) => {
           if (point.set) {
             const distance = getDistance(currentPosition.latitude, currentPosition.longitude, point.lat, point.lng);
-            if (manualMode && !point.discoveryEligible && distance >= 30) {
+            // If the user moves outside the 5-meter radius, make the point eligible for discovery again
+            if (distance > 5 && !point.discoveryEligible) {
               point.discoveryEligible = true;
+              updateDebugStatus(`Target ${index + 1} is now discovery eligible (distance: ${distance.toFixed(2)}m)`);
             }
             if (point.discoveryEligible) {
               if (distance < 5 && !point.found) {
@@ -631,12 +657,14 @@
                 foundCount++;
                 document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
                 updateMessage(`You found sound ${index + 1}`, 'success');
-                playSound(index);
-                if (foundCount === 4) {
-                  updateMessage('Well done', 'success');
-                }
+                // Play the sound in a loop when the target is found
+                playSound(index, true);
               } else if (distance < 30 && distance >= 5) {
                 playBeep(distance);
+              } else if (distance >= 30 && sounds[index]) {
+                // Stop the sound if moving outside 30 meters
+                sounds[index].stop();
+                sounds[index] = null;
               }
             }
           }
@@ -716,6 +744,7 @@
         document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         updateMessage(`Target ${selectedTarget} selected`, 'success');
+        updateTargetDistance(); // Display distance when target is selected
         updateCompass();
       });
     });
