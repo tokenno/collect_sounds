@@ -49,12 +49,9 @@
       color: #ffca28;
     }
     button, a.footer-link {
-      padding: 8px 16px;
       margin: 3px;
       font-size: 0.9em;
       cursor: pointer;
-      background: #00d4ff;
-      color: #0f0f0f;
       border: none;
       border-radius: 6px;
       transition: transform 0.2s, background 0.3s;
@@ -64,16 +61,53 @@
       display: inline-block;
     }
     button:hover, a.footer-link:hover {
-      background: #00b0ff;
       transform: scale(1.05);
     }
-    button.active {
+    button.active:hover {
+      transform: scale(1.05);
+    }
+    .start-tracking {
+      padding: 15px 30px;
+      font-size: 1.2em;
+      background: #00ff88;
+      color: #0f0f0f;
+      border: 2px solid #00cc70;
+      box-shadow: 0 4px 10px rgba(0, 255, 136, 0.5);
+    }
+    .start-tracking:hover {
+      background: #00cc70;
+    }
+    .start-tracking.active {
+      background: #ff1744;
+      box-shadow: 0 4px 10px rgba(255, 23, 68, 0.5);
+      border-color: #cc0022;
+    }
+    .start-tracking.active:hover {
+      background: #d81b60;
+    }
+    button:not(.start-tracking), a.footer-link {
+      padding: 8px 16px;
+      background: #00d4ff;
+      color: #0f0f0f;
+    }
+    button:not(.start-tracking):hover, a.footer-link:hover {
+      background: #00b0ff;
+    }
+    button:not(.start-tracking).active {
       background: #ff1744;
       box-shadow: 0 2px 6px rgba(255, 23, 68, 0.3);
     }
-    button.active:hover {
+    button:not(.start-tracking).active:hover {
       background: #d81b60;
-      transform: scale(1.05);
+    }
+    .centered-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 350px;
+      margin: 10px 0;
     }
     .container {
       width: 100%;
@@ -99,13 +133,13 @@
       transform: translateY(-2px);
     }
     .compass-container {
-      grid-column: 1 / -1; /* Span all columns */
+      grid-column: 1 / -1;
       display: flex;
       justify-content: center;
       align-items: center;
       padding: 10px;
     }
-    .controls, .target, .manual, .collected, .mixer {
+    .controls, .target, .manual, .collected {
       gap: 5px;
     }
     .controls {
@@ -121,19 +155,6 @@
     .collected p {
       margin: 2px 0;
       font-size: 0.9em;
-    }
-    .mixer label {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 3px 0;
-      color: #b0bec5;
-      font-size: 0.9em;
-    }
-    .mixer input[type="range"] {
-      width: 100%;
-      max-width: 150px;
-      accent-color: #00d4ff;
     }
     .manual p {
       margin: 3px 0;
@@ -161,6 +182,33 @@
       border-bottom: 40px solid #ff1744;
       transform-origin: center bottom;
     }
+    .mixer {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      width: 250px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .mixer h2 {
+      margin: 0 0 5px;
+    }
+    .mixer label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 3px 0;
+      color: #b0bec5;
+      font-size: 0.9em;
+    }
+    .mixer input[type="range"] {
+      width: 100%;
+      max-width: 150px;
+      accent-color: #00d4ff;
+    }
     .footer {
       padding: 10px 0;
       display: flex;
@@ -179,7 +227,11 @@
       h2 {
         font-size: 0.9em;
       }
-      button, a.footer-link {
+      .start-tracking {
+        padding: 12px 24px;
+        font-size: 1em;
+      }
+      button:not(.start-tracking), a.footer-link {
         padding: 6px 12px;
         font-size: 0.8em;
       }
@@ -202,6 +254,10 @@
         border-right: 15px solid transparent;
         border-bottom: 30px solid #ff1744;
       }
+      .mixer {
+        width: 200px;
+        padding: 10px;
+      }
     }
   </style>
 </head>
@@ -212,6 +268,18 @@
   <div id="message"></div>
   <div id="debugStatus"></div>
 
+  <div class="centered-section">
+    <button id="startTracking" class="start-tracking">Start Tracking</button>
+
+    <div class="mixer">
+      <h2>Mixer</h2>
+      <label>Sound 1: <input type="range" id="volume1" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 2: <input type="range" id="volume2" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 3: <input type="range" id="volume3" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 4: <input type="range" id="volume4" min="0" max="1" step="0.01" value="1"></label>
+    </div>
+  </div>
+
   <div class="container">
     <div class="compass-container">
       <canvas id="compassCanvas" width="180" height="180"></canvas>
@@ -220,7 +288,6 @@
 
     <div class="card controls">
       <h2>Controls</h2>
-      <button id="startTracking">Start Tracking</button>
       <button id="enableCompass">Enable Compass</button>
       <button id="resetAll">Reset All</button>
       <button id="soundOff">Sound Off</button>
@@ -251,14 +318,6 @@
         <p id="manual3">Manual 3: <button class="setGps" data-point="3">Set GPS</button></p>
         <p id="manual4">Manual 4: <button class="setGps" data-point="4">Set GPS</button></p>
       </div>
-    </div>
-
-    <div class="card mixer">
-      <h2>Mixer</h2>
-      <label>Sound 1: <input type="range" id="volume1" min="0" max="1" step="0.01" value="1"></label>
-      <label>Sound 2: <input type="range" id="volume2" min="0" max="1" step="0.01" value="1"></label>
-      <label>Sound 3: <input type="range" id="volume3" min="0" max="1" step="0.01" value="1"></label>
-      <label>Sound 4: <input type="range" id="volume4" min="0" max="1" step="0.01" value="1"></label>
     </div>
   </div>
 
