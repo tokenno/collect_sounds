@@ -350,7 +350,8 @@
     let isCompassEnabled = false;
     let manualMode = false;
     let soundMuted = false;
-    let audioContextResumed = false; // Track if AudioContext has been resumed
+    let audioContextResumed = false;
+    let gainNodesInitialized = false; // Track if gainNodes are initialized
     let currentPosition = null;
     let targetPoints = [
       { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
@@ -511,6 +512,8 @@
         gainNode.connect(audioCtx.destination);
         gainNodes.push(gainNode);
       }
+      gainNodesInitialized = true;
+      updateDebugStatus('Gain nodes initialized');
     }
 
     // Preload default audio files
@@ -542,7 +545,7 @@
           } catch (error) {
             updateDebugStatus(`Error decoding recorded audio for Target ${i + 1}: ${error.message}`);
             recordedBuffers[i] = null;
-            targetPoints[i].hasRecording = false; // Reset flag if decoding fails
+            targetPoints[i].hasRecording = false;
           }
         } else {
           recordedBuffers[i] = null;
@@ -563,7 +566,6 @@
           document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: <button class="setGps" data-point="${pointIndex + 1}">Set GPS</button>${deleteButtonHtml}`;
         }
       }
-      // Reattach event listeners
       document.querySelectorAll('.setGps').forEach(button => {
         button.addEventListener('click', setGpsHandler);
       });
@@ -588,9 +590,14 @@
         return;
       }
 
+      if (!gainNodesInitialized || !gainNodes[index]) {
+        updateDebugStatus(`Gain nodes not initialized, skipping playback for Sound ${index + 1}`);
+        updateMessage('Audio setup incomplete, please try again', 'error');
+        return;
+      }
+
       let bufferToPlay = null;
 
-      // Check if there's a recorded sound for this target
       if (targetPoints[index].hasRecording && recordedBuffers[index]) {
         bufferToPlay = recordedBuffers[index];
         updateDebugStatus(`Using recorded sound for Target ${index + 1}`);
@@ -603,7 +610,6 @@
         return;
       }
 
-      // Ensure AudioContext is resumed
       if (audioCtx.state === 'suspended') {
         try {
           await audioCtx.resume();
@@ -617,18 +623,16 @@
         updateDebugStatus(`AudioContext state: ${audioCtx.state}`);
       }
 
-      // Stop any existing sound for this index
       if (sounds[index]) {
         sounds[index].stop();
         sounds[index] = null;
       }
 
-      // Create a new audio source
       const source = audioCtx.createBufferSource();
       source.buffer = bufferToPlay;
       source.loop = loop;
-      source.connect(gainNodes[index]);
       try {
+        source.connect(gainNodes[index]);
         source.start();
         updateDebugStatus(`Playing Sound ${index + 1}, loop: ${loop}, volume: ${gainNodes[index].gain.value}`);
       } catch (error) {
@@ -669,6 +673,11 @@
 
       if (!audioContextResumed) {
         updateDebugStatus(`AudioContext not resumed, skipping beep`);
+        return;
+      }
+
+      if (!gainNodesInitialized) {
+        updateDebugStatus(`Gain nodes not initialized, skipping beep`);
         return;
       }
 
@@ -783,6 +792,8 @@
       manualMode = false;
       soundMuted = false;
       audioContextResumed = false;
+      gainNodesInitialized = false;
+      gainNodes = [];
       document.getElementById('soundToggle').textContent = 'Sound Off';
       document.getElementById('soundToggle').classList.remove('active');
       selectedTarget = null;
@@ -1007,6 +1018,12 @@
             audioContextResumed = true;
             updateDebugStatus(`AudioContext resumed on Start Tracking, state: ${audioCtx.state}`);
             updateMessage('Audio playback enabled', 'success');
+            // Initialize gain nodes after AudioContext is resumed
+            initializeGainNodes();
+            // Update volume sliders to reflect initial values
+            document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
+              gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
+            });
           } catch (error) {
             updateDebugStatus(`Failed to resume AudioContext on Start Tracking: ${error.message}`);
             updateMessage('Failed to enable audio playback', 'error');
@@ -1084,8 +1101,12 @@
     // Volume controls
     document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
       slider.addEventListener('input', () => {
-        gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
-        updateDebugStatus(`Volume ${index + 1} set to ${slider.value}`);
+        if (gainNodesInitialized && gainNodes[index]) {
+          gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
+          updateDebugStatus(`Volume ${index + 1} set to ${slider.value}`);
+        } else {
+          updateDebugStatus(`Gain nodes not initialized, cannot adjust volume for Sound ${index + 1}`);
+        }
       });
     });
 
