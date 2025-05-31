@@ -324,6 +324,7 @@
       const fallbackArrow = document.getElementById('fallbackArrow');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      updateDebugStatus(`Compass: Enabled=${isCompassEnabled}, Selected=${selectedTarget}, Set=${targetPoints[selectedTarget - 1]?.set}, Position=${!!currentPosition}`);
       if (!isCompassEnabled) {
         updateDebugStatus('Compass disabled.');
         return;
@@ -332,7 +333,7 @@
         updateDebugStatus('No target selected.');
         return;
       }
-      if (!targetPoints[selectedTarget - 1].set) {
+      if (!targetPoints[selectedTarget - 1]?.set) {
         updateDebugStatus(`Target ${selectedTarget} not set.`);
         return;
       }
@@ -537,6 +538,17 @@
       } else if (!manualMode) {
         loadAdminCoordinates();
       }
+    });
+
+    // Select target
+    document.querySelectorAll('.targetBtn').forEach(button => {
+      button.addEventListener('click', () => {
+        selectedTarget = parseInt(button.dataset.target);
+        document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        updateMessage(`Target ${selectedTarget} selected`, 'success');
+        updateCompass();
+      });
     });
 
     // Set GPS points
