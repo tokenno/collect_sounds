@@ -103,6 +103,15 @@
     button.record-btn.active {
       background: #ffca28; /* Yellow when recording */
     }
+    button.delete-btn {
+      padding: 6px 10px;
+      background: #ff1744;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
+    button.delete-btn:hover {
+      background: #d81b60;
+    }
     .centered-section {
       display: flex;
       flex-direction: column;
@@ -261,6 +270,10 @@
         width: 200px;
         padding: 10px;
       }
+      button.delete-btn {
+        padding: 4px 8px;
+        font-size: 0.7em;
+      }
     }
   </style>
 </head>
@@ -294,7 +307,7 @@
       <h2>Controls</h2>
       <button id="enableCompass">Enable Compass</button>
       <button id="resetAll">Reset All</button>
-      <button id="soundOff">Sound Off</button>
+      <button id="soundToggle">Sound Off</button>
     </div>
 
     <div class="card target">
@@ -336,6 +349,7 @@
     let isTracking = false;
     let isCompassEnabled = false;
     let manualMode = false;
+    let soundMuted = false; // New state to track sound mute status
     let currentPosition = null;
     let targetPoints = [
       { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
@@ -410,7 +424,18 @@
       });
     }
 
-    // Clear recordings from IndexedDB
+    // Delete a specific recording from IndexedDB
+    function deleteRecording(index) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(`recordedSound${index}`);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // Clear all recordings from IndexedDB
     function clearRecordings() {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -518,6 +543,11 @@
 
     // Create and play audio, with option to loop or play once
     async function playSound(index, loop = false) {
+      if (soundMuted) {
+        updateDebugStatus(`Sound muted, skipping playback for Sound ${index + 1}`);
+        return;
+      }
+
       let bufferToPlay = null;
 
       // Check if there's a recorded sound for this target
@@ -587,6 +617,11 @@
 
     // Play beep based on distance
     async function playBeep(distance) {
+      if (soundMuted) {
+        updateDebugStatus(`Sound muted, skipping beep at distance ${distance.toFixed(2)}m`);
+        return;
+      }
+
       const now = Date.now();
       const interval = Math.max(100, 1000 - distance * 30);
       if (now - lastBeepTime < interval) return;
@@ -695,6 +730,9 @@
       isTracking = false;
       isCompassEnabled = false;
       manualMode = false;
+      soundMuted = false;
+      document.getElementById('soundToggle').textContent = 'Sound Off';
+      document.getElementById('soundToggle').classList.remove('active');
       selectedTarget = null;
       foundCount = 0;
       targetPoints = [
@@ -767,14 +805,20 @@
       targetPoints[pointIndex].lng = currentPosition.longitude;
       targetPoints[pointIndex].set = true;
       targetPoints[pointIndex].discoveryEligible = false;
-      document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>`;
+      let deleteButtonHtml = targetPoints[pointIndex].hasRecording
+        ? `<button class="delete-btn" data-point="${pointIndex + 1}">Delete Recording</button>`
+        : '';
+      document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>${deleteButtonHtml}`;
       updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
       button.classList.add('active');
       // Play the sound once (no looping) when setting the point
       playSound(pointIndex, false);
-      // Reattach record button event listeners
+      // Reattach record and delete button event listeners
       document.querySelectorAll('.record-btn').forEach(btn => {
         btn.addEventListener('click', recordSoundHandler);
+      });
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', deleteRecordingHandler);
       });
     }
 
@@ -805,6 +849,13 @@
               targetPoints[pointIndex].hasRecording = true;
               updateDebugStatus(`Recording saved for Target ${pointIndex + 1}`);
               updateMessage(`Recording saved for Target ${pointIndex + 1}`, 'success');
+              // Play the recorded sound once for confirmation
+              await playSound(pointIndex, false);
+              // Reset UI to "Set GPS" button
+              document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: <button class="setGps" data-point="${pointIndex + 1}">Set GPS</button>`;
+              document.querySelectorAll('.setGps').forEach(btn => {
+                btn.addEventListener('click', setGpsHandler);
+              });
             } catch (error) {
               updateDebugStatus(`Error saving recording for Target ${pointIndex + 1}: ${error.message}`);
               updateMessage(`Error saving recording`, 'error');
@@ -830,6 +881,28 @@
         button.classList.remove('active');
         button.textContent = 'Record Sound';
         updateDebugStatus(`Stopped recording for Target ${pointIndex + 1}`);
+      }
+    }
+
+    // Delete recording handler
+    async function deleteRecordingHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+      try {
+        await deleteRecording(pointIndex);
+        targetPoints[pointIndex].hasRecording = false;
+        recordedBuffers[pointIndex] = null;
+        updateDebugStatus(`Recording deleted for Target ${pointIndex + 1}`);
+        updateMessage(`Recording deleted for Target ${pointIndex + 1}`, 'success');
+        // Update UI to remove the delete button
+        document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${targetPoints[pointIndex].lat.toFixed(4)}, Lng ${targetPoints[pointIndex].lng.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>`;
+        // Reattach event listeners
+        document.querySelectorAll('.record-btn').forEach(btn => {
+          btn.addEventListener('click', recordSoundHandler);
+        });
+      } catch (error) {
+        updateDebugStatus(`Error deleting recording for Target ${pointIndex + 1}: ${error.message}`);
+        updateMessage(`Error deleting recording`, 'error');
       }
     }
 
@@ -959,34 +1032,46 @@
       });
     });
 
-    // Sound off
-    document.getElementById('soundOff').addEventListener('click', async () => {
-      const soundOffButton = document.getElementById('soundOff');
-      // Add active class for visual feedback
-      soundOffButton.classList.add('active');
-      // Remove active class after 1 second
-      setTimeout(() => {
-        soundOffButton.classList.remove('active');
-      }, 1000);
+    // Sound toggle (previously Sound Off)
+    document.getElementById('soundToggle').addEventListener('click', async () => {
+      const soundToggleButton = document.getElementById('soundToggle');
+      soundMuted = !soundMuted;
+      soundToggleButton.textContent = soundMuted ? 'Sound On' : 'Sound Off';
+      soundToggleButton.classList.toggle('active', soundMuted);
 
-      // Stop all sounds
-      sounds.forEach(sound => {
-        if (sound) sound.stop();
-      });
-      sounds = [];
-      if (beepSource) {
-        beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-        updateDebugStatus('Beep sound stopped');
-      }
-      if (mediaRecorder && mediaRecorder.state === 'recording') {
-        mediaRecorder.stop();
-        isRecording = false;
-        document.querySelectorAll('.record-btn').forEach(btn => {
-          btn.classList.remove('active');
-          btn.textContent = 'Record Sound';
+      if (soundMuted) {
+        // Stop all sounds
+        sounds.forEach(sound => {
+          if (sound) sound.stop();
         });
+        sounds = [];
+        if (beepSource) {
+          beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+          updateDebugStatus('Beep sound stopped');
+        }
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          isRecording = false;
+          document.querySelectorAll('.record-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.textContent = 'Record Sound';
+          });
+        }
+        updateDebugStatus('All sounds muted');
+      } else {
+        // Resume sounds based on current state
+        updateDebugStatus('Sounds unmuted');
+        if (isTracking) {
+          targetPoints.forEach((point, index) => {
+            if (point.set && point.found) {
+              const distance = getDistance(currentPosition.latitude, currentPosition.longitude, point.lat, point.lng);
+              if (distance < 30) {
+                playSound(index, true);
+              }
+            }
+          });
+        }
       }
-      updateDebugStatus('All sounds stopped');
     });
 
     // Reset all button
