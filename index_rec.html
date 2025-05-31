@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sound Hunt</title>
+  <style>
+    body {
+      font-family: 'Roboto', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+    h1, h2 {
+      color: #00d4ff;
+      text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+      margin: 5px 0;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2em;
+    }
+    h2 {
+      font-size: 1em;
+    }
+    #gpsStatus, #message, #debugStatus, #targetDistance {
+      font-size: 0.9em;
+      margin: 5px 0;
+      padding: 5px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      text-align: center;
+      width: 90%;
+      max-width: 350px;
+    }
+    #message.success {
+      color: #00e676;
+    }
+    #message.error {
+      color: #ff1744;
+    }
+    #message.warning {
+      color: #ffca28;
+    }
+    button, a.footer-link {
+      margin: 3px;
+      font-size: 0.9em;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      transition: transform 0.2s, background 0.3s;
+      box-shadow: 0 2px 6px rgba(0, 212, 255, 0.3);
+      touch-action: manipulation;
+      text-decoration: none;
+      display: inline-block;
+    }
+    button:hover, a.footer-link:hover {
+      transform: scale(1.05);
+    }
+    button.active:hover {
+      transform: scale(1.05);
+    }
+    .start-tracking {
+      padding: 15px 30px;
+      font-size: 1.2em;
+      background: #00ff88;
+      color: #0f0f0f;
+      border: 2px solid #00cc70;
+      box-shadow: 0 4px 10px rgba(0, 255, 136, 0.5);
+    }
+    .start-tracking:hover {
+      background: #00cc70;
+    }
+    .start-tracking.active {
+      background: #ff1744;
+      box-shadow: 0 4px 10px rgba(255, 23, 68, 0.5);
+      border-color: #cc0022;
+    }
+    .start-tracking.active:hover {
+      background: #d81b60;
+    }
+    button:not(.start-tracking), a.footer-link {
+      padding: 8px 16px;
+      background: #00d4ff;
+      color: #0f0f0f;
+    }
+    button:not(.start-tracking):hover, a.footer-link:hover {
+      background: #00b0ff;
+    }
+    button:not(.start-tracking).active {
+      background: #ff1744;
+      box-shadow: 0 2px 6px rgba(255, 23, 68, 0.3);
+    }
+    button:not(.start-tracking).active:hover {
+      background: #d81b60;
+    }
+    button.record-btn.active {
+      background: #ffca28; /* Yellow when recording */
+    }
+    .centered-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 350px;
+      margin: 10px 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 1200px;
+      padding: 10px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      flex-grow: 1;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 150px;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+    }
+    .compass-container {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
+    }
+    .controls, .target, .collected, .manual {
+      gap: 5px;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .target {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .collected p {
+      margin: 2px 0;
+      font-size: 0.9em;
+    }
+    .manual p {
+      margin: 3px 0;
+      color: #b0bec5;
+      font-size: 0.9em;
+    }
+    .manual button {
+      margin: 0 3px;
+      padding: 6px 12px;
+    }
+    #compassCanvas {
+      border: 2px solid #00d4ff;
+      border-radius: 50%;
+      background: #0f0f0f;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+      width: 180px;
+      height: 180px;
+    }
+    #fallbackArrow {
+      display: none;
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 40px solid #ff1744;
+      transform-origin: center bottom;
+    }
+    .mixer {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      width: 250px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .mixer h2 {
+      margin: 0 0 5px;
+    }
+    .mixer label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 3px 0;
+      color: #b0bec5;
+      font-size: 0.9em;
+    }
+    .mixer input[type="range"] {
+      width: 100%;
+      max-width: 150px;
+      accent-color: #00d4ff;
+    }
+    .footer {
+      padding: 10px 0;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    @media (max-width: 600px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+      h1 {
+        font-size: 1.5em;
+      }
+      h2 {
+        font-size: 0.9em;
+      }
+      .start-tracking {
+        padding: 12px 24px;
+        font-size: 1em;
+      }
+      button:not(.start-tracking), a.footer-link {
+        padding: 6px 12px;
+        font-size: 0.8em;
+      }
+      .manual p {
+        font-size: 0.8em;
+      }
+      .manual button {
+        padding: 5px 10px;
+        font-size: 0.8em;
+      }
+      #gpsStatus, #message, #debugStatus, #targetDistance {
+        font-size: 0.8em;
+      }
+      #compassCanvas {
+        width: 140px;
+        height: 140px;
+      }
+      #fallbackArrow {
+        border-left: 15px solid transparent;
+        border-right: 15px solid transparent;
+        border-bottom: 30px solid #ff1744;
+      }
+      .mixer {
+        width: 200px;
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sound Hunt</h1>
+  <p>Explore and discover hidden sounds around you!</p>
+  <div id="gpsStatus">Waiting for GPS...</div>
+  <div id="message"></div>
+  <div id="debugStatus"></div>
+  <div id="targetDistance"></div>
+
+  <div class="centered-section">
+    <button id="startTracking" class="start-tracking">Start Tracking</button>
+
+    <div class="mixer">
+      <h2>Mixer</h2>
+      <label>Sound 1: <input type="range" id="volume1" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 2: <input type="range" id="volume2" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 3: <input type="range" id="volume3" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 4: <input type="range" id="volume4" min="0" max="1" step="0.01" value="1"></label>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="compass-container">
+      <canvas id="compassCanvas" width="180" height="180"></canvas>
+      <div id="fallbackArrow"></div>
+    </div>
+
+    <div class="card controls">
+      <h2>Controls</h2>
+      <button id="enableCompass">Enable Compass</button>
+      <button id="resetAll">Reset All</button>
+      <button id="soundOff">Sound Off</button>
+    </div>
+
+    <div class="card target">
+      <h2>Select Target</h2>
+      <button class="targetBtn" data-target="1">Target 1</button>
+      <button class="targetBtn" data-target="2">Target 2</button>
+      <button class="targetBtn" data-target="3">Target 3</button>
+      <button class="targetBtn" data-target="4">Target 4</button>
+    </div>
+
+    <div class="card collected">
+      <h2>Collected Sounds</h2>
+      <p id="sound1">Sound 1: Not found</p>
+      <p id="sound2">Sound 2: Not found</p>
+      <p id="sound3">Sound 3: Not found</p>
+      <p id="sound4">Sound 4: Not found</p>
+    </div>
+
+    <div class="card manual">
+      <h2>Manual Mode</h2>
+      <button id="toggleManual" title="Enable to set your own points">Toggle Manual Mode</button>
+      <div id="manualControls" style="display: none;">
+        <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button></p>
+        <p id="manual2">Manual 2: <button class="setGps" data-point="2">Set GPS</button></p>
+        <p id="manual3">Manual 3: <button class="setGps" data-point="3">Set GPS</button></p>
+        <p id="manual4">Manual 4: <button class="setGps" data-point="4">Set GPS</button></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="admin.html" class="footer-link">Admin Settings</a>
+    <a href="http://tokeno.net" class="footer-link">Visit Tokeno.net</a>
+    <a href="help.html" class="footer-link">Help</a>
+  </div>
+
+  <script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let isTracking = false;
+    let isCompassEnabled = false;
+    let manualMode = false;
+    let currentPosition = null;
+    let targetPoints = [
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
+    ];
+    let selectedTarget = null;
+    let audioBuffers = [null, null, null, null]; // Store decoded default audio buffers
+    let recordedBuffers = [null, null, null, null]; // Store decoded recorded audio buffers
+    let sounds = []; // Store active sound sources
+    let gainNodes = []; // Store gain nodes for volume control
+    let beepSource = null;
+    let lastBeepTime = 0;
+    let foundCount = 0;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+
+    // IndexedDB setup
+    const DB_NAME = 'SoundHuntDB';
+    const STORE_NAME = 'recordings';
+    let db;
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        };
+      });
+    }
+
+    // Save recording to IndexedDB
+    function saveRecording(index, blob) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const record = { id: `recordedSound${index}`, blob: blob };
+        const request = store.put(record);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // Load recordings from IndexedDB
+    function loadRecordings() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const recordings = [];
+        for (let i = 0; i < 4; i++) {
+          const request = store.get(`recordedSound${i}`);
+          request.onsuccess = () => {
+            if (request.result) {
+              recordings[i] = request.result.blob;
+              targetPoints[i].hasRecording = true;
+            } else {
+              recordings[i] = null;
+              targetPoints[i].hasRecording = false;
+            }
+            if (i === 3) resolve(recordings); // Resolve when all requests are done
+          };
+          request.onerror = () => reject(request.error);
+        }
+      });
+    }
+
+    // Clear recordings from IndexedDB
+    function clearRecordings() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // Update debug status
+    function updateDebugStatus(message) {
+      document.getElementById('debugStatus').textContent = message || 'Debug: Ready';
+      console.log('Debug:', message);
+    }
+
+    // Update message with timeout
+    function updateMessage(message, type = 'normal') {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = message;
+      messageDiv.className = type; // 'normal', 'error', 'success', 'warning'
+      setTimeout(() => {
+        messageDiv.textContent = '';
+        messageDiv.className = '';
+      }, 5000);
+      console.log('Message:', message, type);
+    }
+
+    // Update target distance display
+    function updateTargetDistance() {
+      if (!currentPosition || !selectedTarget || !targetPoints[selectedTarget - 1].set) {
+        document.getElementById('targetDistance').textContent = '';
+        return;
+      }
+      const target = targetPoints[selectedTarget - 1];
+      const distance = getDistance(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng).toFixed(2);
+      document.getElementById('targetDistance').textContent = `Distance to Target ${selectedTarget}: ${distance} meters`;
+    }
+
+    // Load admin-set coordinates from localStorage
+    function loadAdminCoordinates() {
+      if (manualMode) return; // Skip if manual mode is active
+      const storedPoints = localStorage.getItem('targetPoints');
+      if (storedPoints) {
+        const parsedPoints = JSON.parse(storedPoints);
+        targetPoints = parsedPoints.map(point => ({
+          ...point,
+          sound: null,
+          found: false,
+          discoveryEligible: true,
+          hasRecording: targetPoints[parsedPoints.indexOf(point)]?.hasRecording || false
+        }));
+        targetPoints.forEach((point, index) => {
+          if (point.lat && point.lng) {
+            document.getElementById(`manual${index + 1}`).textContent = `Point ${index + 1}: Hidden`;
+          }
+        });
+      }
+      updateDebugStatus(`Admin coordinates loaded: ${storedPoints ? 'Yes' : 'No'}`);
+    }
+
+    // Initialize gain nodes for volume control
+    function initializeGainNodes() {
+      gainNodes = [];
+      for (let i = 0; i < 4; i++) {
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        gainNode.connect(audioCtx.destination);
+        gainNodes.push(gainNode);
+      }
+    }
+
+    // Preload default audio files
+    async function preloadAudioFiles() {
+      const audioFiles = ['sound1.wav', 'sound2.wav', 'sound3.wav', 'sound4.wav'];
+      for (let i = 0; i < audioFiles.length; i++) {
+        try {
+          const response = await fetch(audioFiles[i]);
+          if (!response.ok) throw new Error(`Failed to fetch ${audioFiles[i]}`);
+          const arrayBuffer = await response.arrayBuffer();
+          audioBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
+          updateDebugStatus(`Preloaded ${audioFiles[i]}`);
+        } catch (error) {
+          updateMessage(`Failed to load ${audioFiles[i]}: ${error.message}`, 'error');
+          updateDebugStatus(`Audio preload error for ${audioFiles[i]}: ${error.message}`);
+        }
+      }
+    }
+
+    // Decode recorded audio blobs into audio buffers
+    async function decodeRecordedAudio() {
+      const recordings = await loadRecordings();
+      for (let i = 0; i < recordings.length; i++) {
+        if (recordings[i]) {
+          try {
+            const arrayBuffer = await recordings[i].arrayBuffer();
+            recordedBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
+            updateDebugStatus(`Decoded recorded audio for Target ${i + 1}`);
+          } catch (error) {
+            updateDebugStatus(`Error decoding recorded audio for Target ${i + 1}: ${error.message}`);
+          }
+        }
+      }
+    }
+
+    // Create and play audio, with option to loop or play once
+    async function playSound(index, loop = false) {
+      let bufferToPlay = null;
+
+      // Check if there's a recorded sound for this target
+      if (targetPoints[index].hasRecording && recordedBuffers[index]) {
+        bufferToPlay = recordedBuffers[index];
+        updateDebugStatus(`Using recorded sound for Target ${index + 1}`);
+      } else if (audioBuffers[index]) {
+        bufferToPlay = audioBuffers[index];
+        updateDebugStatus(`Using default sound for Target ${index + 1}`);
+      } else {
+        updateMessage(`Audio not loaded for Sound ${index + 1}`, 'warning');
+        updateDebugStatus(`Audio not loaded for Sound ${index + 1}`);
+        return;
+      }
+
+      // Ensure AudioContext is resumed (mobile browsers may suspend it)
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+        updateDebugStatus(`AudioContext resumed, state: ${audioCtx.state}`);
+      } else {
+        updateDebugStatus(`AudioContext state: ${audioCtx.state}`);
+      }
+
+      // Stop any existing sound for this index
+      if (sounds[index]) {
+        sounds[index].stop();
+        sounds[index] = null;
+      }
+
+      // Create a new audio source
+      const source = audioCtx.createBufferSource();
+      source.buffer = bufferToPlay;
+      source.loop = loop; // Loop if specified
+      source.connect(gainNodes[index]);
+      try {
+        source.start();
+        updateDebugStatus(`Playing Sound ${index + 1}, loop: ${loop}, volume: ${gainNodes[index].gain.value}`);
+      } catch (error) {
+        updateDebugStatus(`Error playing Sound ${index + 1}: ${error.message}`);
+        updateMessage(`Error playing Sound ${index + 1}`, 'error');
+        return;
+      }
+
+      if (!loop) {
+        // Stop the sound after it plays once (duration of the audio buffer)
+        source.onended = () => {
+          sounds[index] = null;
+          updateDebugStatus(`Sound ${index + 1} finished playing once`);
+        };
+      } else {
+        sounds[index] = source;
+        updateDebugStatus(`Playing Sound ${index + 1} in loop`);
+      }
+    }
+
+    // Create beep sound
+    function createBeep() {
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.type = 'square';
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      return { oscillator, gainNode };
+    }
+
+    // Play beep based on distance
+    async function playBeep(distance) {
+      const now = Date.now();
+      const interval = Math.max(100, 1000 - distance * 30);
+      if (now - lastBeepTime < interval) return;
+      lastBeepTime = now;
+
+      // Ensure AudioContext is resumed for beep
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+        updateDebugStatus(`AudioContext resumed for beep, state: ${audioCtx.state}`);
+      }
+
+      if (!beepSource) {
+        beepSource = createBeep();
+        beepSource.oscillator.start();
+      }
+      beepSource.gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      setTimeout(() => {
+        beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      }, 100);
+      updateDebugStatus(`Beep played, distance: ${distance.toFixed(2)}m`);
+    }
+
+    // Calculate distance between two GPS points (in meters)
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    // Calculate bearing for GPS-based compass
+    function getBearing(lat1, lon1, lat2, lon2) {
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) -
+                Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      const θ = Math.atan2(y, x);
+      return (θ * 180 / Math.PI + 360) % 360;
+    }
+
+    // Update compass with canvas-based arrow
+    function updateCompass() {
+      const canvas = document.getElementById('compassCanvas');
+      const ctx = canvas.getContext('2d');
+      const fallbackArrow = document.getElementById('fallbackArrow');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      updateDebugStatus(`Compass: Enabled=${isCompassEnabled}, Selected=${selectedTarget}, Set=${targetPoints[selectedTarget - 1]?.set}, Position=${!!currentPosition}`);
+      if (!isCompassEnabled) {
+        updateDebugStatus('Compass disabled.');
+        return;
+      }
+      if (!selectedTarget) {
+        updateDebugStatus('No target selected.');
+        return;
+      }
+      if (!targetPoints[selectedTarget - 1]?.set) {
+        updateDebugStatus(`Target ${selectedTarget} not set.`);
+        return;
+      }
+      if (!currentPosition) {
+        updateDebugStatus('No GPS position.');
+        return;
+      }
+
+      const target = targetPoints[selectedTarget - 1];
+      const bearing = getBearing(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng);
+      updateDebugStatus(`Drawing arrow for Target ${selectedTarget}: ${bearing.toFixed(2)}°`);
+
+      // Draw compass circle
+      ctx.beginPath();
+      ctx.arc(90, 90, 80, 0, 2 * Math.PI); // Adjusted for canvas size
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Draw arrow
+      ctx.save();
+      ctx.translate(90, 90); // Adjusted for canvas size
+      ctx.rotate(bearing * Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(0, -55); // Scaled for canvas
+      ctx.lineTo(20, 20);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(-20, 20);
+      ctx.closePath();
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.restore();
+
+      // Hide fallback
+      fallbackArrow.style.display = 'none';
+      requestAnimationFrame(updateCompass);
+    }
+
+    // Reset all states
+    async function resetAll() {
+      isTracking = false;
+      isCompassEnabled = false;
+      manualMode = false;
+      selectedTarget = null;
+      foundCount = 0;
+      targetPoints = [
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+        { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
+      ];
+      recordedBuffers = [null, null, null, null];
+      document.getElementById('startTracking').textContent = 'Start Tracking';
+      document.getElementById('startTracking').classList.remove('active');
+      document.getElementById('enableCompass').textContent = 'Enable Compass';
+      document.getElementById('enableCompass').classList.remove('active');
+      document.getElementById('toggleManual').textContent = 'Toggle Manual Mode';
+      document.getElementById('toggleManual').classList.remove('active');
+      document.getElementById('manualControls').style.display = 'none';
+      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 180, 180);
+      updateMessage('');
+      updateDebugStatus('');
+      document.getElementById('fallbackArrow').style.display = 'none';
+      document.getElementById('targetDistance').textContent = '';
+      document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.setGps').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('input[type="range"]').forEach(slider => slider.value = 1);
+      document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`sound${i}`).textContent = `Sound ${i}: Not found`;
+        document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
+      }
+      sounds.forEach(sound => {
+        if (sound) sound.stop();
+      });
+      sounds = [];
+      if (beepSource) {
+        beepSource.oscillator.stop();
+        beepSource = null;
+      }
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        isRecording = false;
+        document.querySelectorAll('.record-btn').forEach(btn => btn.classList.remove('active'));
+      }
+      try {
+        await clearRecordings();
+        updateDebugStatus('All recordings cleared from storage');
+      } catch (error) {
+        updateDebugStatus(`Error clearing recordings: ${error.message}`);
+      }
+      loadAdminCoordinates();
+      // Reattach event listeners after reset
+      document.querySelectorAll('.setGps').forEach(button => {
+        button.addEventListener('click', setGpsHandler);
+      });
+    }
+
+    // Set GPS points handler
+    function setGpsHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+      updateDebugStatus(`Set GPS clicked for point ${pointIndex + 1}, manualMode: ${manualMode}, currentPosition: ${!!currentPosition}`);
+      if (!manualMode) {
+        updateMessage(`Cannot set Target ${pointIndex + 1}: Manual mode is disabled`, 'error');
+        return;
+      }
+      if (!currentPosition) {
+        updateMessage(`Cannot set Target ${pointIndex + 1}: GPS unavailable`, 'error');
+        return;
+      }
+      targetPoints[pointIndex].lat = currentPosition.latitude;
+      targetPoints[pointIndex].lng = currentPosition.longitude;
+      targetPoints[pointIndex].set = true;
+      targetPoints[pointIndex].discoveryEligible = false;
+      document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>`;
+      updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
+      button.classList.add('active');
+      // Play the sound once (no looping) when setting the point
+      playSound(pointIndex, false);
+      // Reattach record button event listeners
+      document.querySelectorAll('.record-btn').forEach(btn => {
+        btn.addEventListener('click', recordSoundHandler);
+      });
+    }
+
+    // Record sound handler
+    async function recordSoundHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+
+      if (!isRecording) {
+        // Start recording
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          recordedChunks = [];
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              recordedChunks.push(e.data);
+            }
+          };
+          mediaRecorder.onstop = async () => {
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            try {
+              // Save to IndexedDB
+              await saveRecording(pointIndex, blob);
+              // Decode for playback
+              const arrayBuffer = await blob.arrayBuffer();
+              recordedBuffers[pointIndex] = await audioCtx.decodeAudioData(arrayBuffer);
+              targetPoints[pointIndex].hasRecording = true;
+              updateDebugStatus(`Recording saved for Target ${pointIndex + 1}`);
+              updateMessage(`Recording saved for Target ${pointIndex + 1}`, 'success');
+            } catch (error) {
+              updateDebugStatus(`Error saving recording for Target ${pointIndex + 1}: ${error.message}`);
+              updateMessage(`Error saving recording`, 'error');
+            }
+            // Stop the stream
+            stream.getTracks().forEach(track => track.stop());
+          };
+          mediaRecorder.start();
+          isRecording = true;
+          button.classList.add('active');
+          button.textContent = 'Stop Recording';
+          updateDebugStatus(`Started recording for Target ${pointIndex + 1}`);
+        } catch (error) {
+          updateMessage(`Failed to access microphone: ${error.message}`, 'error');
+          updateDebugStatus(`Microphone access error: ${error.message}`);
+        }
+      } else {
+        // Stop recording
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+        isRecording = false;
+        button.classList.remove('active');
+        button.textContent = 'Record Sound';
+        updateDebugStatus(`Stopped recording for Target ${pointIndex + 1}`);
+      }
+    }
+
+    // Update GPS status and proximity checks
+    function updatePosition(position) {
+      currentPosition = position.coords;
+      document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
+      updateTargetDistance(); // Update distance display
+      if (isTracking) {
+        targetPoints.forEach((point, index) => {
+          if (point.set) {
+            const distance = getDistance(currentPosition.latitude, currentPosition.longitude, point.lat, point.lng);
+            // If the user moves outside the 5-meter radius, make the point eligible for discovery again
+            if (distance > 5 && !point.discoveryEligible) {
+              point.discoveryEligible = true;
+              updateDebugStatus(`Target ${index + 1} is now discovery eligible (distance: ${distance.toFixed(2)}m)`);
+            }
+            if (point.discoveryEligible) {
+              if (distance < 5 && !point.found) {
+                point.found = true;
+                foundCount++;
+                document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
+                updateMessage(`You found sound ${index + 1}`, 'success');
+                // Play the sound in a loop when the target is found
+                playSound(index, true);
+              } else if (distance < 30 && distance >= 5) {
+                playBeep(distance);
+              } else if (distance >= 30 && sounds[index]) {
+                // Stop the sound if moving outside 30 meters
+                sounds[index].stop();
+                sounds[index] = null;
+                updateDebugStatus(`Stopped Sound ${index + 1} (distance: ${distance.toFixed(2)}m)`);
+              }
+            }
+          }
+        });
+      }
+      updateCompass();
+    }
+
+    // Handle GPS errors
+    function handleError(error) {
+      document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
+      updateDebugStatus(`GPS Error: ${error.message}`);
+    }
+
+    // Start tracking
+    document.getElementById('startTracking').addEventListener('click', () => {
+      isTracking = !isTracking;
+      document.getElementById('startTracking').textContent = isTracking ? 'Stop Tracking' : 'Start Tracking';
+      document.getElementById('startTracking').classList.toggle('active', isTracking);
+      if (isTracking) {
+        navigator.geolocation.watchPosition(updatePosition, handleError, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+      }
+    });
+
+    // Enable compass
+    document.getElementById('enableCompass').addEventListener('click', () => {
+      isCompassEnabled = !isCompassEnabled;
+      document.getElementById('enableCompass').textContent = isCompassEnabled ? 'Disable Compass' : 'Enable Compass';
+      document.getElementById('enableCompass').classList.toggle('active', isCompassEnabled);
+      if (isCompassEnabled) {
+        updateCompass();
+      } else {
+        const canvas = document.getElementById('compassCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('fallbackArrow').style.display = 'none';
+        updateDebugStatus('Compass disabled.');
+      }
+    });
+
+    // Toggle manual mode
+    document.getElementById('toggleManual').addEventListener('click', () => {
+      manualMode = !manualMode;
+      document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
+      document.getElementById('toggleManual').textContent = manualMode ? 'Disable Manual Mode' : 'Toggle Manual Mode';
+      document.getElementById('toggleManual').classList.toggle('active', manualMode);
+      updateDebugStatus(`Manual mode: ${manualMode}`);
+      if (manualMode && localStorage.getItem('targetPoints')) {
+        updateMessage('Warning: Manual mode enabled, admin points ignored.', 'warning');
+        targetPoints = [
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
+        ];
+        for (let i = 1; i <= 4; i++) {
+          document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
+          document.querySelectorAll(`.setGps[data-point="${i}"]`)[0].classList.remove('active');
+        }
+        // Reattach event listeners after DOM update
+        document.querySelectorAll('.setGps').forEach(button => {
+          button.addEventListener('click', setGpsHandler);
+        });
+      } else if (!manualMode) {
+        loadAdminCoordinates();
+      }
+    });
+
+    // Select target
+    document.querySelectorAll('.targetBtn').forEach(button => {
+      button.addEventListener('click', () => {
+        selectedTarget = parseInt(button.dataset.target);
+        document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        updateMessage(`Target ${selectedTarget} selected`, 'success');
+        updateTargetDistance(); // Display distance when target is selected
+        updateCompass();
+      });
+    });
+
+    // Set GPS points
+    document.querySelectorAll('.setGps').forEach(button => {
+      button.addEventListener('click', setGpsHandler);
+    });
+
+    // Volume controls
+    document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
+      slider.addEventListener('input', () => {
+        gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
+        updateDebugStatus(`Volume ${index + 1} set to ${slider.value}`);
+      });
+    });
+
+    // Sound off
+    document.getElementById('soundOff').addEventListener('click', async () => {
+      const soundOffButton = document.getElementById('soundOff');
+      // Add active class for visual feedback
+      soundOffButton.classList.add('active');
+      // Remove active class after 1 second
+      setTimeout(() => {
+        soundOffButton.classList.remove('active');
+      }, 1000);
+
+      // Stop all sounds
+      sounds.forEach(sound => {
+        if (sound) sound.stop();
+      });
+      sounds = [];
+      if (beepSource) {
+        beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        updateDebugStatus('Beep sound stopped');
+      }
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        isRecording = false;
+        document.querySelectorAll('.record-btn').forEach(btn => {
+          btn.classList.remove('active');
+          btn.textContent = 'Record Sound';
+        });
+      }
+      updateDebugStatus('All sounds stopped');
+    });
+
+    // Reset all button
+    document.getElementById('resetAll').addEventListener('click', resetAll);
+
+    // Initialize
+    async function initialize() {
+      try {
+        await openDB();
+        await preloadAudioFiles();
+        await decodeRecordedAudio();
+        loadAdminCoordinates();
+        updateDebugStatus('App initialized');
+      } catch (error) {
+        updateDebugStatus(`Initialization error: ${error.message}`);
+        updateMessage('Failed to initialize app', 'error');
+      }
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
