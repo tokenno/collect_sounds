@@ -21,6 +21,7 @@
       color: #00d4ff;
       text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
       margin: 5px 0;
+      text-align: center;
     }
     h1 {
       font-size: 2em;
@@ -92,9 +93,17 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      min-height: 150px;
     }
     .card:hover {
       transform: translateY(-2px);
+    }
+    .compass-container {
+      grid-column: 1 / -1; /* Span all columns */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px;
     }
     .controls, .target, .manual, .collected, .mixer {
       gap: 5px;
@@ -140,26 +149,17 @@
       border-radius: 50%;
       background: #0f0f0f;
       box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10;
+      width: 180px;
+      height: 180px;
     }
     #fallbackArrow {
       display: none;
       width: 0;
       height: 0;
-      border-left: 15px solid transparent;
-      border-right: 15px solid transparent;
-      border-bottom: 30px solid #ff1744;
-      margin: 10px auto;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-bottom: 40px solid #ff1744;
       transform-origin: center bottom;
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10;
     }
     .footer {
       padding: 10px 0;
@@ -194,8 +194,13 @@
         font-size: 0.8em;
       }
       #compassCanvas {
-        width: 120px;
-        height: 120px;
+        width: 140px;
+        height: 140px;
+      }
+      #fallbackArrow {
+        border-left: 15px solid transparent;
+        border-right: 15px solid transparent;
+        border-bottom: 30px solid #ff1744;
       }
     }
   </style>
@@ -207,10 +212,12 @@
   <div id="message"></div>
   <div id="debugStatus"></div>
 
-  <canvas id="compassCanvas" width="150" height="150"></canvas>
-  <div id="fallbackArrow"></div>
-
   <div class="container">
+    <div class="compass-container">
+      <canvas id="compassCanvas" width="180" height="180"></canvas>
+      <div id="fallbackArrow"></div>
+    </div>
+
     <div class="card controls">
       <h2>Controls</h2>
       <button id="startTracking">Start Tracking</button>
@@ -439,20 +446,20 @@
 
       // Draw compass circle
       ctx.beginPath();
-      ctx.arc(75, 75, 65, 0, 2 * Math.PI); // Adjusted for smaller canvas
+      ctx.arc(90, 90, 80, 0, 2 * Math.PI); // Adjusted for canvas size
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 2;
       ctx.stroke();
 
       // Draw arrow
       ctx.save();
-      ctx.translate(75, 75); // Adjusted for smaller canvas
+      ctx.translate(90, 90); // Adjusted for canvas size
       ctx.rotate(bearing * Math.PI / 180);
       ctx.beginPath();
-      ctx.moveTo(0, -45); // Scaled down for smaller canvas
-      ctx.lineTo(15, 15);
+      ctx.moveTo(0, -55); // Scaled for canvas
+      ctx.lineTo(20, 20);
       ctx.lineTo(0, 0);
-      ctx.lineTo(-15, 15);
+      ctx.lineTo(-20, 20);
       ctx.closePath();
       ctx.fillStyle = 'red';
       ctx.fill();
@@ -483,7 +490,7 @@
       document.getElementById('toggleManual').textContent = 'Toggle Manual Mode';
       document.getElementById('toggleManual').classList.remove('active');
       document.getElementById('manualControls').style.display = 'none';
-      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 150, 150);
+      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 180, 180);
       updateMessage('');
       updateDebugStatus('');
       document.getElementById('fallbackArrow').style.display = 'none';
@@ -530,7 +537,7 @@
       targetPoints[pointIndex].lng = currentPosition.longitude;
       targetPoints[pointIndex].set = true;
       targetPoints[pointIndex].discoveryEligible = false;
-      document.getElementById(`manual${index + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+      document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
       updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
       button.classList.add('active');
       playSound(pointIndex, 3);
