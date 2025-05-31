@@ -281,7 +281,7 @@
   <h1>Sound Hunt</h1>
   <p>Explore and discover hidden sounds around you!</p>
   <div id="gpsStatus">Waiting for GPS...</div>
-  <div id="message"></div>
+  <div id="message">Tap "Start Tracking" to enable audio playback</div>
   <div id="debugStatus"></div>
   <div id="targetDistance"></div>
 
@@ -349,7 +349,8 @@
     let isTracking = false;
     let isCompassEnabled = false;
     let manualMode = false;
-    let soundMuted = false; // New state to track sound mute status
+    let soundMuted = false;
+    let audioContextResumed = false; // Track if AudioContext has been resumed
     let currentPosition = null;
     let targetPoints = [
       { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
@@ -358,10 +359,10 @@
       { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
     ];
     let selectedTarget = null;
-    let audioBuffers = [null, null, null, null]; // Store decoded default audio buffers
-    let recordedBuffers = [null, null, null, null]; // Store decoded recorded audio buffers
-    let sounds = []; // Store active sound sources
-    let gainNodes = []; // Store gain nodes for volume control
+    let audioBuffers = [null, null, null, null];
+    let recordedBuffers = [null, null, null, null];
+    let sounds = [];
+    let gainNodes = [];
     let beepSource = null;
     let lastBeepTime = 0;
     let foundCount = 0;
@@ -406,21 +407,25 @@
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
-        const recordings = [];
+        const requests = [];
         for (let i = 0; i < 4; i++) {
-          const request = store.get(`recordedSound${i}`);
-          request.onsuccess = () => {
-            if (request.result) {
-              recordings[i] = request.result.blob;
-              targetPoints[i].hasRecording = true;
-            } else {
-              recordings[i] = null;
-              targetPoints[i].hasRecording = false;
-            }
-            if (i === 3) resolve(recordings); // Resolve when all requests are done
-          };
-          request.onerror = () => reject(request.error);
+          requests.push(new Promise((res) => {
+            const request = store.get(`recordedSound${i}`);
+            request.onsuccess = () => {
+              if (request.result) {
+                targetPoints[i].hasRecording = true;
+                updateDebugStatus(`Recording exists for Target ${i + 1}`);
+                res(request.result.blob);
+              } else {
+                targetPoints[i].hasRecording = false;
+                updateDebugStatus(`No recording for Target ${i + 1}`);
+                res(null);
+              }
+            };
+            request.onerror = () => reject(request.error);
+          }));
         }
+        Promise.all(requests).then(recordings => resolve(recordings));
       });
     }
 
@@ -456,7 +461,7 @@
     function updateMessage(message, type = 'normal') {
       const messageDiv = document.getElementById('message');
       messageDiv.textContent = message;
-      messageDiv.className = type; // 'normal', 'error', 'success', 'warning'
+      messageDiv.className = type;
       setTimeout(() => {
         messageDiv.textContent = '';
         messageDiv.className = '';
@@ -477,7 +482,7 @@
 
     // Load admin-set coordinates from localStorage
     function loadAdminCoordinates() {
-      if (manualMode) return; // Skip if manual mode is active
+      if (manualMode) return;
       const storedPoints = localStorage.getItem('targetPoints');
       if (storedPoints) {
         const parsedPoints = JSON.parse(storedPoints);
@@ -536,15 +541,50 @@
             updateDebugStatus(`Decoded recorded audio for Target ${i + 1}`);
           } catch (error) {
             updateDebugStatus(`Error decoding recorded audio for Target ${i + 1}: ${error.message}`);
+            recordedBuffers[i] = null;
+            targetPoints[i].hasRecording = false; // Reset flag if decoding fails
           }
+        } else {
+          recordedBuffers[i] = null;
         }
       }
+    }
+
+    // Update UI to reflect recordings
+    function updateRecordingUI() {
+      for (let i = 0; i < 4; i++) {
+        const pointIndex = i;
+        let deleteButtonHtml = targetPoints[pointIndex].hasRecording
+          ? `<button class="delete-btn" data-point="${pointIndex + 1}">Delete Recording</button>`
+          : '';
+        if (targetPoints[pointIndex].set) {
+          document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${targetPoints[pointIndex].lat.toFixed(4)}, Lng ${targetPoints[pointIndex].lng.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>${deleteButtonHtml}`;
+        } else {
+          document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: <button class="setGps" data-point="${pointIndex + 1}">Set GPS</button>${deleteButtonHtml}`;
+        }
+      }
+      // Reattach event listeners
+      document.querySelectorAll('.setGps').forEach(button => {
+        button.addEventListener('click', setGpsHandler);
+      });
+      document.querySelectorAll('.record-btn').forEach(btn => {
+        btn.addEventListener('click', recordSoundHandler);
+      });
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', deleteRecordingHandler);
+      });
     }
 
     // Create and play audio, with option to loop or play once
     async function playSound(index, loop = false) {
       if (soundMuted) {
         updateDebugStatus(`Sound muted, skipping playback for Sound ${index + 1}`);
+        return;
+      }
+
+      if (!audioContextResumed) {
+        updateDebugStatus(`AudioContext not resumed, skipping playback for Sound ${index + 1}`);
+        updateMessage('Tap "Start Tracking" to enable audio', 'warning');
         return;
       }
 
@@ -563,10 +603,16 @@
         return;
       }
 
-      // Ensure AudioContext is resumed (mobile browsers may suspend it)
+      // Ensure AudioContext is resumed
       if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
-        updateDebugStatus(`AudioContext resumed, state: ${audioCtx.state}`);
+        try {
+          await audioCtx.resume();
+          updateDebugStatus(`AudioContext resumed, state: ${audioCtx.state}`);
+        } catch (error) {
+          updateDebugStatus(`Failed to resume AudioContext: ${error.message}`);
+          updateMessage('Failed to enable audio playback', 'error');
+          return;
+        }
       } else {
         updateDebugStatus(`AudioContext state: ${audioCtx.state}`);
       }
@@ -580,7 +626,7 @@
       // Create a new audio source
       const source = audioCtx.createBufferSource();
       source.buffer = bufferToPlay;
-      source.loop = loop; // Loop if specified
+      source.loop = loop;
       source.connect(gainNodes[index]);
       try {
         source.start();
@@ -592,7 +638,6 @@
       }
 
       if (!loop) {
-        // Stop the sound after it plays once (duration of the audio buffer)
         source.onended = () => {
           sounds[index] = null;
           updateDebugStatus(`Sound ${index + 1} finished playing once`);
@@ -622,15 +667,24 @@
         return;
       }
 
+      if (!audioContextResumed) {
+        updateDebugStatus(`AudioContext not resumed, skipping beep`);
+        return;
+      }
+
       const now = Date.now();
       const interval = Math.max(100, 1000 - distance * 30);
       if (now - lastBeepTime < interval) return;
       lastBeepTime = now;
 
-      // Ensure AudioContext is resumed for beep
       if (audioCtx.state === 'suspended') {
-        await audioCtx.resume();
-        updateDebugStatus(`AudioContext resumed for beep, state: ${audioCtx.state}`);
+        try {
+          await audioCtx.resume();
+          updateDebugStatus(`AudioContext resumed for beep, state: ${audioCtx.state}`);
+        } catch (error) {
+          updateDebugStatus(`Failed to resume AudioContext for beep: ${error.message}`);
+          return;
+        }
       }
 
       if (!beepSource) {
@@ -699,19 +753,17 @@
       const bearing = getBearing(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng);
       updateDebugStatus(`Drawing arrow for Target ${selectedTarget}: ${bearing.toFixed(2)}°`);
 
-      // Draw compass circle
       ctx.beginPath();
-      ctx.arc(90, 90, 80, 0, 2 * Math.PI); // Adjusted for canvas size
+      ctx.arc(90, 90, 80, 0, 2 * Math.PI);
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Draw arrow
       ctx.save();
-      ctx.translate(90, 90); // Adjusted for canvas size
+      ctx.translate(90, 90);
       ctx.rotate(bearing * Math.PI / 180);
       ctx.beginPath();
-      ctx.moveTo(0, -55); // Scaled for canvas
+      ctx.moveTo(0, -55);
       ctx.lineTo(20, 20);
       ctx.lineTo(0, 0);
       ctx.lineTo(-20, 20);
@@ -720,7 +772,6 @@
       ctx.fill();
       ctx.restore();
 
-      // Hide fallback
       fallbackArrow.style.display = 'none';
       requestAnimationFrame(updateCompass);
     }
@@ -731,6 +782,7 @@
       isCompassEnabled = false;
       manualMode = false;
       soundMuted = false;
+      audioContextResumed = false;
       document.getElementById('soundToggle').textContent = 'Sound Off';
       document.getElementById('soundToggle').classList.remove('active');
       selectedTarget = null;
@@ -750,7 +802,7 @@
       document.getElementById('toggleManual').classList.remove('active');
       document.getElementById('manualControls').style.display = 'none';
       document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 180, 180);
-      updateMessage('');
+      updateMessage('Tap "Start Tracking" to enable audio playback');
       updateDebugStatus('');
       document.getElementById('fallbackArrow').style.display = 'none';
       document.getElementById('targetDistance').textContent = '';
@@ -782,7 +834,6 @@
         updateDebugStatus(`Error clearing recordings: ${error.message}`);
       }
       loadAdminCoordinates();
-      // Reattach event listeners after reset
       document.querySelectorAll('.setGps').forEach(button => {
         button.addEventListener('click', setGpsHandler);
       });
@@ -811,9 +862,7 @@
       document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>${deleteButtonHtml}`;
       updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
       button.classList.add('active');
-      // Play the sound once (no looping) when setting the point
       playSound(pointIndex, false);
-      // Reattach record and delete button event listeners
       document.querySelectorAll('.record-btn').forEach(btn => {
         btn.addEventListener('click', recordSoundHandler);
       });
@@ -828,7 +877,6 @@
       const pointIndex = parseInt(button.dataset.point) - 1;
 
       if (!isRecording) {
-        // Start recording
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           mediaRecorder = new MediaRecorder(stream);
@@ -836,31 +884,38 @@
           mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) {
               recordedChunks.push(e.data);
+              updateDebugStatus(`Recorded data available for Target ${pointIndex + 1}, size: ${e.data.size}`);
+            } else {
+              updateDebugStatus(`No recorded data available for Target ${pointIndex + 1}`);
             }
           };
           mediaRecorder.onstop = async () => {
+            if (recordedChunks.length === 0) {
+              updateDebugStatus(`No data recorded for Target ${pointIndex + 1}`);
+              updateMessage(`No audio recorded for Target ${pointIndex + 1}`, 'error');
+              stream.getTracks().forEach(track => track.stop());
+              return;
+            }
             const blob = new Blob(recordedChunks, { type: 'audio/webm' });
             try {
-              // Save to IndexedDB
               await saveRecording(pointIndex, blob);
-              // Decode for playback
               const arrayBuffer = await blob.arrayBuffer();
               recordedBuffers[pointIndex] = await audioCtx.decodeAudioData(arrayBuffer);
               targetPoints[pointIndex].hasRecording = true;
               updateDebugStatus(`Recording saved for Target ${pointIndex + 1}`);
               updateMessage(`Recording saved for Target ${pointIndex + 1}`, 'success');
-              // Play the recorded sound once for confirmation
               await playSound(pointIndex, false);
-              // Reset UI to "Set GPS" button
-              document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: <button class="setGps" data-point="${pointIndex + 1}">Set GPS</button>`;
+              document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: <button class="setGps" data-point="${pointIndex + 1}">Set GPS</button><button class="delete-btn" data-point="${pointIndex + 1}">Delete Recording</button>`;
               document.querySelectorAll('.setGps').forEach(btn => {
                 btn.addEventListener('click', setGpsHandler);
               });
+              document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', deleteRecordingHandler);
+              });
             } catch (error) {
-              updateDebugStatus(`Error saving recording for Target ${pointIndex + 1}: ${error.message}`);
+              updateDebugStatus(`Error saving or decoding recording for Target ${pointIndex + 1}: ${error.message}`);
               updateMessage(`Error saving recording`, 'error');
             }
-            // Stop the stream
             stream.getTracks().forEach(track => track.stop());
           };
           mediaRecorder.start();
@@ -873,7 +928,6 @@
           updateDebugStatus(`Microphone access error: ${error.message}`);
         }
       } else {
-        // Stop recording
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
         }
@@ -894,12 +948,7 @@
         recordedBuffers[pointIndex] = null;
         updateDebugStatus(`Recording deleted for Target ${pointIndex + 1}`);
         updateMessage(`Recording deleted for Target ${pointIndex + 1}`, 'success');
-        // Update UI to remove the delete button
-        document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${targetPoints[pointIndex].lat.toFixed(4)}, Lng ${targetPoints[pointIndex].lng.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>`;
-        // Reattach event listeners
-        document.querySelectorAll('.record-btn').forEach(btn => {
-          btn.addEventListener('click', recordSoundHandler);
-        });
+        updateRecordingUI();
       } catch (error) {
         updateDebugStatus(`Error deleting recording for Target ${pointIndex + 1}: ${error.message}`);
         updateMessage(`Error deleting recording`, 'error');
@@ -910,12 +959,11 @@
     function updatePosition(position) {
       currentPosition = position.coords;
       document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
-      updateTargetDistance(); // Update distance display
+      updateTargetDistance();
       if (isTracking) {
         targetPoints.forEach((point, index) => {
           if (point.set) {
             const distance = getDistance(currentPosition.latitude, currentPosition.longitude, point.lat, point.lng);
-            // If the user moves outside the 5-meter radius, make the point eligible for discovery again
             if (distance > 5 && !point.discoveryEligible) {
               point.discoveryEligible = true;
               updateDebugStatus(`Target ${index + 1} is now discovery eligible (distance: ${distance.toFixed(2)}m)`);
@@ -926,12 +974,10 @@
                 foundCount++;
                 document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
                 updateMessage(`You found sound ${index + 1}`, 'success');
-                // Play the sound in a loop when the target is found
                 playSound(index, true);
               } else if (distance < 30 && distance >= 5) {
                 playBeep(distance);
               } else if (distance >= 30 && sounds[index]) {
-                // Stop the sound if moving outside 30 meters
                 sounds[index].stop();
                 sounds[index] = null;
                 updateDebugStatus(`Stopped Sound ${index + 1} (distance: ${distance.toFixed(2)}m)`);
@@ -950,11 +996,22 @@
     }
 
     // Start tracking
-    document.getElementById('startTracking').addEventListener('click', () => {
+    document.getElementById('startTracking').addEventListener('click', async () => {
       isTracking = !isTracking;
       document.getElementById('startTracking').textContent = isTracking ? 'Stop Tracking' : 'Start Tracking';
       document.getElementById('startTracking').classList.toggle('active', isTracking);
       if (isTracking) {
+        if (!audioContextResumed) {
+          try {
+            await audioCtx.resume();
+            audioContextResumed = true;
+            updateDebugStatus(`AudioContext resumed on Start Tracking, state: ${audioCtx.state}`);
+            updateMessage('Audio playback enabled', 'success');
+          } catch (error) {
+            updateDebugStatus(`Failed to resume AudioContext on Start Tracking: ${error.message}`);
+            updateMessage('Failed to enable audio playback', 'error');
+          }
+        }
         navigator.geolocation.watchPosition(updatePosition, handleError, {
           enableHighAccuracy: true,
           timeout: 5000,
@@ -998,7 +1055,7 @@
           document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
           document.querySelectorAll(`.setGps[data-point="${i}"]`)[0].classList.remove('active');
         }
-        // Reattach event listeners after DOM update
+        updateRecordingUI();
         document.querySelectorAll('.setGps').forEach(button => {
           button.addEventListener('click', setGpsHandler);
         });
@@ -1014,7 +1071,7 @@
         document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
         updateMessage(`Target ${selectedTarget} selected`, 'success');
-        updateTargetDistance(); // Display distance when target is selected
+        updateTargetDistance();
         updateCompass();
       });
     });
@@ -1032,7 +1089,7 @@
       });
     });
 
-    // Sound toggle (previously Sound Off)
+    // Sound toggle
     document.getElementById('soundToggle').addEventListener('click', async () => {
       const soundToggleButton = document.getElementById('soundToggle');
       soundMuted = !soundMuted;
@@ -1040,7 +1097,6 @@
       soundToggleButton.classList.toggle('active', soundMuted);
 
       if (soundMuted) {
-        // Stop all sounds
         sounds.forEach(sound => {
           if (sound) sound.stop();
         });
@@ -1059,7 +1115,6 @@
         }
         updateDebugStatus('All sounds muted');
       } else {
-        // Resume sounds based on current state
         updateDebugStatus('Sounds unmuted');
         if (isTracking) {
           targetPoints.forEach((point, index) => {
@@ -1083,6 +1138,7 @@
         await openDB();
         await preloadAudioFiles();
         await decodeRecordedAudio();
+        updateRecordingUI();
         loadAdminCoordinates();
         updateDebugStatus('App initialized');
       } catch (error) {
