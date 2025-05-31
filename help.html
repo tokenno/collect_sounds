@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sound Hunt Help</title>
+  <style>
+    body {
+      font-family: 'Roboto', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      color: #00d4ff;
+      text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+      margin-top: 20px;
+    }
+    h1 {
+      font-size: 2em;
+      text-align: center;
+    }
+    h2 {
+      font-size: 1.5em;
+    }
+    p, ul {
+      margin: 10px 0;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    a {
+      color: #00d4ff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 1.5em;
+      }
+      h2 {
+        font-size: 1.2em;
+      }
+      p, ul {
+        font-size: 0.9em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sound Hunt</h1>
+  <p>Welcome to Sound Hunt, an interactive GPS-based app designed to help you explore and discover hidden sounds around you! This manual will guide you through all the features and how to use them effectively.</p>
+
+  <h2>Overview</h2>
+  <p>Sound Hunt uses your device's GPS and compass to create an engaging experience where you can set or find target points, each associated with a unique sound (Sound 1, Sound 2, Sound 3, or Sound 4). The app supports two modes: Manual Mode for setting your own points and the default Admin Mode for discovering pre-set points.</p>
+
+  <h2>Getting Started</h2>
+  <ul>
+    <li><strong>Access the App:</strong> Open in a modern web browser on a device with GPS and compass capabilities (e.g., smartphone or tablet). Ensure you are on a secure HTTPS connection.</li>
+    <li><strong>Grant Permissions:</strong> Allow the app to access your location and, if prompted, the compass when enabling it.</li>
+    <li><strong>Initial Setup:</strong> The app will display "Waiting for GPS..." until it acquires your location. Once acquired, it will show your coordinates (e.g., "Lat: 12.3456, Lng: 78.9012").</li>
+  </ul>
+
+  <h2>Main Interface</h2>
+  <p>The app is divided into sections visible on the screen:</p>
+  <ul>
+    <li><strong>Header:</strong> Displays the title "Sound Hunt" and a brief description.</li>
+    <li><strong>GPS Status:</strong> Shows your current latitude and longitude or any GPS errors.</li>
+    <li><strong>Message Area:</strong> Provides temporary feedback (e.g., success or error messages) that disappears after 5 seconds.</li>
+    <li><strong>Debug Status:</strong> Offers technical logs for troubleshooting (visible to users for feedback).</li>
+    <li><strong>Target Distance:</strong> Displays the distance to the selected target if a point is set and GPS is available.</li>
+    <li><strong>Centered Section:</strong> Contains the "Start Tracking" button and the "Mixer" for sound control.</li>
+    <li><strong>Container:</strong> Includes cards for Compass, Controls, Target Selection, Collected Sounds, and Manual Mode.</li>
+  </ul>
+
+  <h2>Key Features and Usage</h2>
+  <ol>
+    <li>
+      <strong>Start Tracking</strong>
+      <ul>
+        <li><strong>Button:</strong> "Start Tracking" (turns red when active as "Stop Tracking").</li>
+        <li><strong>Function:</strong> Toggles GPS tracking. Click to start, click again to stop.</li>
+        <li><strong>How to Use:</strong>
+          <ul>
+            <li>Click "Start Tracking" to begin monitoring your position.</li>
+            <li>The app will update your location and check proximity to targets.</li>
+            <li>Stop tracking to pause all location-based actions.</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Mixer</strong>
+      <ul>
+        <li><strong>Controls:</strong> Four sliders labeled "Sound 1," "Sound 2," "Sound 3," and "Sound 4" (range 0 to 1).</li>
+        <li><strong>Function:</strong> Adjusts the volume of each sound independently.</li>
+        <li><strong>How to Use:</strong>
+          <ul>
+            <li>Slide to change the volume (e.g., set to 0 for mute, 1 for full volume).</li>
+            <li>Affects sounds playing in both manual and tracking modes.</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Compass</strong>
+      <ul>
+        <li><strong>Display:</strong> A circular canvas showing a red arrow indicating the direction to the selected target.</li>
+        <li><strong>Button:</strong> "Enable Compass" (turns red when active as "Disable Compass").</li>
+        <li><strong>Function:</strong> Provides directional guidance to the selected target using your device's compass.</li>
+        <li><strong>How to Use:</strong>
+          <ul>
+            <li>Click "Enable Compass" to activate.</li>
+            <li>Select a target (see below), and the arrow will point toward it.</li>
+            <li>Disable to stop the compass update.</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Controls</strong>
+      <ul>
+        <li><strong>Buttons:</strong>
+          <ul>
+            <li>"Reset All": Resets the app to its initial state.</li>
+            <li>"Sound Off": Stops all currently playing sounds.</li>
+          </ul>
+        </li>
+        <li><strong>How to Use:</strong>
+          <ul>
+            <li>Click "Reset All" to clear targets, sounds, and settings.</li>
+            <li>Click "Sound Off" to silence all active audio without resetting the app.</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Select Target</strong>
+      <ul>
+        <li><strong>Buttons:</strong> Four buttons labeled "Target 1," "Target 2," "Target 3," and "Target 4".</li>
+        <li><strong>Function:</strong> Allows you to choose a target to focus on, displaying its distance if set.</li>
+        <li><strong>How to Use:</strong>
+          <ul>
+            <li>Click a target button to select it (it turns red when active).</li>
+            <li>If the target has a set point and GPS is available, the "Target Distance" area will show the distance (e.g., "Distance to Target 1: 12.34 meters").</li>
+            <li>Use with the compass for navigation.</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Collected Sounds</strong>
+      <ul>
+        <li><strong>Display:</strong> Four lines showing the status of each sound (e.g., "Sound 1: Not found" or "Sound 1: Found").</li>
+        <li><strong>Function:</strong> Tracks which sounds you have discovered.</li>
+        <li><strong>How to Use:</strong>
+          <ul>
+            <li>Sounds update to "Found" when you enter within 5 meters of a target in tracking mode.</li>
+            <li>A message ("You found sound X") appears when a sound is collected.</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+    <li>
+      <strong>Manual Mode</strong>
+      <ul>
+        <li><strong>Button:</strong> "Toggle Manual Mode" (turns red when active as "Disable Manual Mode").</li>
+        <li><strong>Function:</strong> Enables you to set your own GPS points for targets.</li>
+        <li><strong>How to Use:</strong>
+          <ul>
+            <li>Click "Toggle Manual Mode" to enable (disables admin points if set).</li>
+            <li>Four "Set GPS" buttons appear for Targets 1–4.</li>
+            <li>Click "Set GPS" for a target to set its location at your current position; the sound plays once to confirm.</li>
+            <li>Move outside 5 meters to make the point discoverable again in tracking mode.</li>
+            <li>Disable manual mode to revert to admin points.</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+  </ol>
+
+  <h2>How It Works</h2>
+  <ul>
+    <li><strong>GPS Tracking:</strong> The app uses your device’s geolocation to monitor your position. Targets are considered "found" when you are within 5 meters.</li>
+    <li><strong>Sound Playback:</strong>
+      <ul>
+        <li>In manual mode, setting a point plays the corresponding sound once.</li>
+        <li>In tracking mode, entering a 5-meter radius of a set point triggers the sound to play in a loop; it stops if you move beyond 30 meters.</li>
+        <li>A beep sound plays when you are between 5 and 30 meters from a target.</li>
+      </ul>
+    </li>
+    <li><strong>Discovery Eligibility:</strong> After setting a point manually, you must move outside 5 meters for it to become discoverable again.</li>
+  </ul>
+
+  <h2>Tips for Use</h2>
+  <ul>
+    <li><strong>Best Experience:</strong> Use outdoors with a clear GPS signal and a calibrated compass.</li>
+    <li><strong>Admin Points:</strong> If admin points are set (via localStorage or an admin page), they override manual points unless manual mode is active.</li>
+    <li><strong>Troubleshooting:</strong> Check the "Debug Status" for logs or share them with support if issues arise.</li>
+  </ul>
+
+  <h2>Safety and Notes</h2>
+  <ul>
+    <li>Ensure you have permission to access locations where you set or find points.</li>
+    <li>Avoid using the app while driving or in unsafe areas.</li>
+    <li>The app requires internet access for audio file loading and HTTPS for geolocation.</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>For help, mail <a href="mailto:tokenomusic@gmail.com">tokenomusic@gmail.com</a> or visit <a href="http://tokeno.net">http://tokeno.net</a></p>
+
+  <p>Happy hunting!</p>
+</body>
+</html>
