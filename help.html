@@ -38,6 +38,21 @@
     a:hover {
       text-decoration: underline;
     }
+    .footer-link {
+      margin: 10px 0;
+      padding: 8px 16px;
+      background: #00d4ff;
+      color: #0f0f0f;
+      border-radius: 6px;
+      display: inline-block;
+      text-align: center;
+      transition: transform 0.2s, background 0.3s;
+      box-shadow: 0 2px 6px rgba(0, 212, 255, 0.3);
+    }
+    .footer-link:hover {
+      background: #00b0ff;
+      transform: scale(1.05);
+    }
     @media (max-width: 600px) {
       h1 {
         font-size: 1.5em;
@@ -47,6 +62,10 @@
       }
       p, ul {
         font-size: 0.9em;
+      }
+      .footer-link {
+        padding: 6px 12px;
+        font-size: 0.8em;
       }
     }
   </style>
@@ -214,5 +233,7 @@
   <p>For help, mail <a href="mailto:tokenomusic@gmail.com">tokenomusic@gmail.com</a> or visit <a href="http://tokeno.net">http://tokeno.net</a></p>
 
   <p>Happy hunting!</p>
+
+  <p><a href="index.html" class="footer-link">Back to Main Page</a></p>
 </body>
 </html>
