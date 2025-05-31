@@ -339,7 +339,9 @@
       { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true }
     ];
     let selectedTarget = null;
-    let sounds = [];
+    let audioBuffers = [null, null, null, null]; // Store decoded audio buffers
+    let sounds = []; // Store active sound sources
+    let gainNodes = []; // Store gain nodes for volume control
     let beepSource = null;
     let lastBeepTime = 0;
     let foundCount = 0;
@@ -383,16 +385,54 @@
       updateDebugStatus(`Admin coordinates loaded: ${storedPoints ? 'Yes' : 'No'}`);
     }
 
-    // Generate simple sine wave sounds for each target
-    function createSound(frequency) {
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
-      gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      return { oscillator, gainNode };
+    // Initialize gain nodes for volume control
+    function initializeGainNodes() {
+      gainNodes = [];
+      for (let i = 0; i < 4; i++) {
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+        gainNode.connect(audioCtx.destination);
+        gainNodes.push(gainNode);
+      }
+    }
+
+    // Preload audio files
+    async function preloadAudioFiles() {
+      const audioFiles = ['sound1.wav', 'sound2.wav', 'sound3.wav', 'sound4.wav'];
+      for (let i = 0; i < audioFiles.length; i++) {
+        try {
+          const response = await fetch(audioFiles[i]);
+          if (!response.ok) throw new Error(`Failed to fetch ${audioFiles[i]}`);
+          const arrayBuffer = await response.arrayBuffer();
+          audioBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
+          updateDebugStatus(`Preloaded ${audioFiles[i]}`);
+        } catch (error) {
+          updateMessage(`Failed to load ${audioFiles[i]}: ${error.message}`, 'error');
+          updateDebugStatus(`Audio preload error for ${audioFiles[i]}: ${error.message}`);
+        }
+      }
+    }
+
+    // Create and play audio in a loop
+    function playSound(index) {
+      if (!audioBuffers[index]) {
+        updateMessage(`Audio not loaded for Sound ${index + 1}`, 'warning');
+        return;
+      }
+
+      // Stop any existing sound for this index
+      if (sounds[index]) {
+        sounds[index].stop();
+      }
+
+      // Create a new audio source
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffers[index];
+      source.loop = true; // Enable looping
+      source.connect(gainNodes[index]);
+      source.start();
+      sounds[index] = source;
+      updateDebugStatus(`Playing Sound ${index + 1} in loop`);
     }
 
     // Create beep sound
@@ -405,31 +445,6 @@
       oscillator.connect(gainNode);
       gainNode.connect(audioCtx.destination);
       return { oscillator, gainNode };
-    }
-
-    // Load sounds
-    function loadSounds() {
-      sounds = [
-        createSound(440), // A4
-        createSound(523.25), // C5
-        createSound(659.25), // E5
-        createSound(783.99) // G5
-      ];
-    }
-
-    // Play sound multiple times
-    function playSound(index, times = 1) {
-      if (!sounds[index].oscillator.started) {
-        sounds[index].oscillator.start();
-        sounds[index].oscillator.started = true;
-      }
-      sounds[index].gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-      setTimeout(() => {
-        sounds[index].gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-        if (times > 1) {
-          setTimeout(() => playSound(index, times - 1), 1000);
-        }
-      }, 500);
     }
 
     // Play beep based on distance
@@ -562,12 +577,9 @@
         document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
       }
       sounds.forEach(sound => {
-        if (sound.oscillator.started) {
-          sound.oscillator.stop();
-          sound.oscillator.started = false;
-        }
+        if (sound) sound.stop();
       });
-      loadSounds();
+      sounds = [];
       if (beepSource) {
         beepSource.oscillator.stop();
         beepSource = null;
@@ -599,7 +611,7 @@
       document.getElementById(`manual${pointIndex + 1}`).textContent = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
       updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
       button.classList.add('active');
-      playSound(pointIndex, 3);
+      playSound(pointIndex);
     }
 
     // Update GPS status and proximity checks
@@ -619,7 +631,7 @@
                 foundCount++;
                 document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
                 updateMessage(`You found sound ${index + 1}`, 'success');
-                playSound(index, 3);
+                playSound(index);
                 if (foundCount === 4) {
                   updateMessage('Well done', 'success');
                 }
@@ -716,26 +728,31 @@
     // Volume controls
     document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
       slider.addEventListener('input', () => {
-        sounds[index].gainNode.gain.setValueAtTime(slider.value, audioCtx.currentTime);
+        gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
+        updateDebugStatus(`Volume ${index + 1} set to ${slider.value}`);
       });
     });
 
     // Sound off
     document.getElementById('soundOff').addEventListener('click', () => {
       sounds.forEach(sound => {
-        sound.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        if (sound) sound.stop();
       });
+      sounds = [];
       if (beepSource) {
         beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
       }
+      updateDebugStatus('All sounds stopped');
     });
 
     // Reset all button
     document.getElementById('resetAll').addEventListener('click', resetAll);
 
     // Initialize
-    loadSounds();
-    loadAdminCoordinates();
+    initializeGainNodes();
+    preloadAudioFiles().then(() => {
+      loadAdminCoordinates();
+    });
   </script>
 </body>
 </html>
