@@ -139,6 +139,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: flex-start; /* Align content to the top */
       min-height: 150px;
     }
     .card:hover {
@@ -153,6 +154,8 @@
     }
     .controls, .target, .collected, .manual {
       gap: 5px;
+      width: 100%; /* Ensure the inner container takes full width */
+      margin-top: 0; /* Remove any top margin */
     }
     .controls {
       display: flex;
@@ -351,7 +354,7 @@
     let manualMode = false;
     let soundMuted = false;
     let audioContextResumed = false;
-    let gainNodesInitialized = false; // Track if gainNodes are initialized
+    let gainNodesInitialized = false;
     let currentPosition = null;
     let targetPoints = [
       { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
@@ -391,7 +394,6 @@
       });
     }
 
-    // Save recording to IndexedDB
     function saveRecording(index, blob) {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -403,7 +405,6 @@
       });
     }
 
-    // Load recordings from IndexedDB
     function loadRecordings() {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
@@ -430,7 +431,6 @@
       });
     }
 
-    // Delete a specific recording from IndexedDB
     function deleteRecording(index) {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -441,7 +441,6 @@
       });
     }
 
-    // Clear all recordings from IndexedDB
     function clearRecordings() {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
@@ -452,13 +451,11 @@
       });
     }
 
-    // Update debug status
     function updateDebugStatus(message) {
       document.getElementById('debugStatus').textContent = message || 'Debug: Ready';
       console.log('Debug:', message);
     }
 
-    // Update message with timeout
     function updateMessage(message, type = 'normal') {
       const messageDiv = document.getElementById('message');
       messageDiv.textContent = message;
@@ -470,7 +467,6 @@
       console.log('Message:', message, type);
     }
 
-    // Update target distance display
     function updateTargetDistance() {
       if (!currentPosition || !selectedTarget || !targetPoints[selectedTarget - 1].set) {
         document.getElementById('targetDistance').textContent = '';
@@ -481,7 +477,6 @@
       document.getElementById('targetDistance').textContent = `Distance to Target ${selectedTarget}: ${distance} meters`;
     }
 
-    // Load admin-set coordinates from localStorage
     function loadAdminCoordinates() {
       if (manualMode) return;
       const storedPoints = localStorage.getItem('targetPoints');
@@ -503,7 +498,6 @@
       updateDebugStatus(`Admin coordinates loaded: ${storedPoints ? 'Yes' : 'No'}`);
     }
 
-    // Initialize gain nodes for volume control
     function initializeGainNodes() {
       gainNodes = [];
       for (let i = 0; i < 4; i++) {
@@ -516,7 +510,6 @@
       updateDebugStatus('Gain nodes initialized');
     }
 
-    // Preload default audio files
     async function preloadAudioFiles() {
       const audioFiles = ['sound1.wav', 'sound2.wav', 'sound3.wav', 'sound4.wav'];
       for (let i = 0; i < audioFiles.length; i++) {
@@ -533,7 +526,6 @@
       }
     }
 
-    // Decode recorded audio blobs into audio buffers
     async function decodeRecordedAudio() {
       const recordings = await loadRecordings();
       for (let i = 0; i < recordings.length; i++) {
@@ -553,7 +545,6 @@
       }
     }
 
-    // Update UI to reflect recordings
     function updateRecordingUI() {
       for (let i = 0; i < 4; i++) {
         const pointIndex = i;
@@ -577,7 +568,6 @@
       });
     }
 
-    // Create and play audio, with option to loop or play once
     async function playSound(index, loop = false) {
       if (soundMuted) {
         updateDebugStatus(`Sound muted, skipping playback for Sound ${index + 1}`);
@@ -652,7 +642,6 @@
       }
     }
 
-    // Create beep sound
     function createBeep() {
       const oscillator = audioCtx.createOscillator();
       const gainNode = audioCtx.createGain();
@@ -664,7 +653,6 @@
       return { oscillator, gainNode };
     }
 
-    // Play beep based on distance
     async function playBeep(distance) {
       if (soundMuted) {
         updateDebugStatus(`Sound muted, skipping beep at distance ${distance.toFixed(2)}m`);
@@ -707,7 +695,6 @@
       updateDebugStatus(`Beep played, distance: ${distance.toFixed(2)}m`);
     }
 
-    // Calculate distance between two GPS points (in meters)
     function getDistance(lat1, lon1, lat2, lon2) {
       const R = 6371e3;
       const φ1 = lat1 * Math.PI / 180;
@@ -721,7 +708,6 @@
       return R * c;
     }
 
-    // Calculate bearing for GPS-based compass
     function getBearing(lat1, lon1, lat2, lon2) {
       const φ1 = lat1 * Math.PI / 180;
       const φ2 = lat2 * Math.PI / 180;
@@ -733,7 +719,6 @@
       return (θ * 180 / Math.PI + 360) % 360;
     }
 
-    // Update compass with canvas-based arrow
     function updateCompass() {
       const canvas = document.getElementById('compassCanvas');
       const ctx = canvas.getContext('2d');
@@ -785,7 +770,6 @@
       requestAnimationFrame(updateCompass);
     }
 
-    // Reset all states
     async function resetAll() {
       isTracking = false;
       isCompassEnabled = false;
@@ -850,7 +834,6 @@
       });
     }
 
-    // Set GPS points handler
     function setGpsHandler(event) {
       const button = event.target;
       const pointIndex = parseInt(button.dataset.point) - 1;
@@ -882,7 +865,6 @@
       });
     }
 
-    // Record sound handler
     async function recordSoundHandler(event) {
       const button = event.target;
       const pointIndex = parseInt(button.dataset.point) - 1;
@@ -949,7 +931,6 @@
       }
     }
 
-    // Delete recording handler
     async function deleteRecordingHandler(event) {
       const button = event.target;
       const pointIndex = parseInt(button.dataset.point) - 1;
@@ -966,7 +947,6 @@
       }
     }
 
-    // Update GPS status and proximity checks
     function updatePosition(position) {
       currentPosition = position.coords;
       document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
@@ -1000,13 +980,11 @@
       updateCompass();
     }
 
-    // Handle GPS errors
     function handleError(error) {
       document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
       updateDebugStatus(`GPS Error: ${error.message}`);
     }
 
-    // Start tracking
     document.getElementById('startTracking').addEventListener('click', async () => {
       isTracking = !isTracking;
       document.getElementById('startTracking').textContent = isTracking ? 'Stop Tracking' : 'Start Tracking';
@@ -1018,9 +996,7 @@
             audioContextResumed = true;
             updateDebugStatus(`AudioContext resumed on Start Tracking, state: ${audioCtx.state}`);
             updateMessage('Audio playback enabled', 'success');
-            // Initialize gain nodes after AudioContext is resumed
             initializeGainNodes();
-            // Update volume sliders to reflect initial values
             document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
               gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
             });
@@ -1037,7 +1013,6 @@
       }
     });
 
-    // Enable compass
     document.getElementById('enableCompass').addEventListener('click', () => {
       isCompassEnabled = !isCompassEnabled;
       document.getElementById('enableCompass').textContent = isCompassEnabled ? 'Disable Compass' : 'Enable Compass';
@@ -1053,11 +1028,10 @@
       }
     });
 
-    // Toggle manual mode
     document.getElementById('toggleManual').addEventListener('click', () => {
       manualMode = !manualMode;
       document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
-      document.getElementById('toggleManual').textContent = manualMode ? 'Disable Manual Mode' : 'Toggle Manual Mode';
+      document.getElementById('toggleManual').textContent = manualMode ? 'Disable & Reset' : 'Toggle Manual Mode';
       document.getElementById('toggleManual').classList.toggle('active', manualMode);
       updateDebugStatus(`Manual mode: ${manualMode}`);
       if (manualMode && localStorage.getItem('targetPoints')) {
@@ -1081,7 +1055,6 @@
       }
     });
 
-    // Select target
     document.querySelectorAll('.targetBtn').forEach(button => {
       button.addEventListener('click', () => {
         selectedTarget = parseInt(button.dataset.target);
@@ -1093,12 +1066,10 @@
       });
     });
 
-    // Set GPS points
     document.querySelectorAll('.setGps').forEach(button => {
       button.addEventListener('click', setGpsHandler);
     });
 
-    // Volume controls
     document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
       slider.addEventListener('input', () => {
         if (gainNodesInitialized && gainNodes[index]) {
@@ -1110,7 +1081,6 @@
       });
     });
 
-    // Sound toggle
     document.getElementById('soundToggle').addEventListener('click', async () => {
       const soundToggleButton = document.getElementById('soundToggle');
       soundMuted = !soundMuted;
@@ -1150,10 +1120,8 @@
       }
     });
 
-    // Reset all button
     document.getElementById('resetAll').addEventListener('click', resetAll);
 
-    // Initialize
     async function initialize() {
       try {
         await openDB();
