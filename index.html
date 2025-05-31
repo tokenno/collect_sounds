@@ -6,168 +6,231 @@
   <title>Sound Hunt</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
+      font-family: 'Roboto', Arial, sans-serif;
       margin: 0;
-      padding: 20px;
-      background-color: #f0f0f0;
+      padding: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
     }
     h1, h2 {
-      color: #333;
+      color: #00d4ff;
+      text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+      margin: 10px 0;
+    }
+    h1 {
+      font-size: 2em;
+    }
+    h2 {
+      font-size: 1.2em;
     }
     #gpsStatus, #message, #debugStatus {
-      font-size: 1.2em;
-      margin: 20px 0;
-      color: #333;
+      font-size: 0.9em;
+      margin: 5px 0;
+      padding: 5px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      width: 90%;
+      max-width: 350px;
+      text-align: center;
     }
     #message.success {
-      color: #388e3c;
+      color: #00e676;
     }
     #message.error {
-      color: #d32f2f;
+      color: #ff1744;
     }
     #message.warning {
-      color: #f57c00;
+      color: #ffca28;
     }
-    button, a.admin-link {
-      padding: 12px 24px;
-      margin: 5px;
-      font-size: 1.1em;
+    button, a.footer-link {
+      padding: 8px 16px;
+      margin: 3px;
+      font-size: 0.9em;
       cursor: pointer;
-      background-color: #4CAF50;
-      color: white;
+      background: #00d4ff;
+      color: #0f0f0f;
       border: none;
-      border-radius: 5px;
+      border-radius: 6px;
+      transition: transform 0.2s, background 0.3s;
+      box-shadow: 0 2px 6px rgba(0, 212, 255, 0.3);
+      touch-action: manipulation;
       text-decoration: none;
       display: inline-block;
-      touch-action: manipulation;
     }
-    button:hover, a.admin-link:hover {
-      background-color: #45a049;
+    button:hover, a.footer-link:hover {
+      background: #00b0ff;
+      transform: scale(1.05);
     }
     button.active {
-      background-color: #d32f2f;
+      background: #ff1744;
+      box-shadow: 0 2px 6px rgba(255, 23, 68, 0.3);
     }
     button.active:hover {
-      background-color: #b71c1c;
+      background: #d81b60;
+      transform: scale(1.05);
+    }
+    .container {
+      width: 90%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 10px 0;
+    }
+    .card {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+    }
+    .controls, .target, .manual, .collected, .mixer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
     }
     #compassCanvas {
-      margin: 20px auto;
-      border: 1px solid #333;
-      background-color: #fff;
+      margin: 10px auto;
+      border: 2px solid #00d4ff;
+      border-radius: 50%;
+      background: #0f0f0f;
+      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
     }
     #fallbackArrow {
       display: none;
       width: 0;
       height: 0;
-      border-left: 20px solid transparent;
-      border-right: 20px solid transparent;
-      border-bottom: 40px solid red;
-      margin: 20px auto;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-bottom: 30px solid #ff1744;
+      margin: 10px auto;
       transform-origin: center bottom;
     }
-    .mixer {
-      margin: 20px 0;
-      width: 100%;
-      max-width: 300px;
-    }
     .mixer label {
-      display: block;
-      margin: 10px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 3px 0;
+      color: #b0bec5;
+      font-size: 0.9em;
     }
-    .target, .manual, .controls {
-      margin: 20px 0;
+    .mixer input[type="range"] {
       width: 100%;
-      max-width: 300px;
+      max-width: 150px;
+      accent-color: #00d4ff;
     }
     .manual p {
-      margin: 5px 0;
+      margin: 3px 0;
+      color: #b0bec5;
+      font-size: 0.9em;
     }
     .manual button {
-      margin: 0 5px;
-      padding: 8px 16px;
+      margin: 0 3px;
+      padding: 6px 12px;
+    }
+    .footer {
+      margin-top: auto;
+      padding: 10px 0;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
     }
     @media (max-width: 600px) {
-      button, a.admin-link {
-        padding: 10px 20px;
-        font-size: 1em;
-      }
-      .manual p {
-        font-size: 0.9em;
-      }
-      .manual button {
-        padding: 6px 12px;
-        font-size: 0.9em;
-      }
-      #gpsStatus, #message, #debugStatus {
-        font-size: 1em;
-      }
       h1 {
         font-size: 1.5em;
       }
       h2 {
-        font-size: 1.2em;
+        font-size: 1em;
+      }
+      button, a.footer-link {
+        padding: 6px 12px;
+        font-size: 0.8em;
+      }
+      .manual p {
+        font-size: 0.8em;
+      }
+      .manual button {
+        padding: 5px 10px;
+        font-size: 0.8em;
+      }
+      #gpsStatus, #message, #debugStatus {
+        font-size: 0.8em;
       }
     }
   </style>
 </head>
 <body>
-  <h1>Sound Hunt</h1>
-  <p>Walk around to discover hidden sounds nearby.</p>
-  <a href="admin.html" class="admin-link">Admin Settings</a>
-  <div id="gpsStatus">Waiting for GPS...</div>
-  <div id="debugStatus"></div>
-  <div id="message"></div>
+  <div class="container">
+    <h1>Sound Hunt</h1>
+    <p>Explore and discover hidden sounds around you!</p>
+    <div id="gpsStatus">Waiting for GPS...</div>
+    <div id="message"></div>
 
-  <div class="controls">
-    <button id="startTracking">Start Tracking</button>
-    <button id="enableCompass">Enable Compass</button>
-    <button id="resetAll">Reset All</button>
-  </div>
-
-  <canvas id="compassCanvas" width="200" height="200"></canvas>
-  <div id="fallbackArrow"></div>
-
-  <div class="collected">
-    <h2>Collected Sounds</h2>
-    <p id="sound1">Sound 1: Not found</p>
-    <p id="sound2">Sound 2: Not found</p>
-    <p id="sound3">Sound 3: Not found</p>
-    <p id="sound4">Sound 4: Not found</p>
-  </div>
-
-  <div class="target">
-    <h2>Select Target</h2>
-    <button class="targetBtn" data-target="1">Target 1</button>
-    <button class="targetBtn" data-target="2">Target 2</button>
-    <button class="targetBtn" data-target="3">Target 3</button>
-    <button class="targetBtn" data-target="4">Target 4</button>
-  </div>
-
-  <div class="manual">
-    <h2>Toggle Manual Mode</h2>
-    <button id="toggleManual" title="Enable to set your own points">Toggle Manual Mode</button>
-    <div id="manualControls" style="display: none;">
-      <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button></p>
-      <p id="manual2">Manual 2: <button class="setGps" data-point="2">Set GPS</button></p>
-      <p id="manual3">Manual 3: <button class="setGps" data-point="3">Set GPS</button></p>
-      <p id="manual4">Manual 4: <button class="setGps" data-point="4">Set GPS</button></p>
+    <div class="card">
+      <canvas id="compassCanvas" width="150" height="150"></canvas>
+      <div id="fallbackArrow"></div>
     </div>
+
+    <div id="debugStatus"></div>
+
+    <div class="card controls">
+      <button id="startTracking">Start Tracking</button>
+      <button id="enableCompass">Enable Compass</button>
+      <button id="resetAll">Reset All</button>
+    </div>
+
+    <div class="card collected">
+      <h2>Collected Sounds</h2>
+      <p id="sound1">Sound 1: Not found</p>
+      <p id="sound2">Sound 2: Not found</p>
+      <p id="sound3">Sound 3: Not found</p>
+      <p id="sound4">Sound 4: Not found</p>
+    </div>
+
+    <div class="card target">
+      <h2>Select Target</h2>
+      <button class="targetBtn" data-target="1">Target 1</button>
+      <button class="targetBtn" data-target="2">Target 2</button>
+      <button class="targetBtn" data-target="3">Target 3</button>
+      <button class="targetBtn" data-target="4">Target 4</button>
+    </div>
+
+    <div class="card manual">
+      <h2>Toggle Manual Mode</h2>
+      <button id="toggleManual" title="Enable to set your own points">Toggle Manual Mode</button>
+      <div id="manualControls" style="display: none;">
+        <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button></p>
+        <p id="manual2">Manual 2: <button class="setGps" data-point="2">Set GPS</button></p>
+        <p id="manual3">Manual 3: <button class="setGps" data-point="3">Set GPS</button></p>
+        <p id="manual4">Manual 4: <button class="setGps" data-point="4">Set GPS</button></p>
+      </div>
+    </div>
+
+    <div class="card mixer">
+      <h2>Mixer</h2>
+      <label>Sound 1: <input type="range" id="volume1" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 2: <input type="range" id="volume2" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 3: <input type="range" id="volume3" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 4: <input type="range" id="volume4" min="0" max="1" step="0.01" value="1"></label>
+    </div>
+
+    <button id="soundOff">Sound Off</button>
   </div>
 
-  <div class="mixer">
-    <h2>Mixer</h2>
-    <label>Sound 1: <input type="range" id="volume1" min="0" max="1" step="0.01" value="1"></label>
-    <label>Sound 2: <input type="range" id="volume2" min="0" max="1" step="0.01" value="1"></label>
-    <label>Sound 3: <input type="range" id="volume3" min="0" max="1" step="0.01" value="1"></label>
-    <label>Sound 4: <input type="range" id="volume4" min="0" max="1" step="0.01" value="1"></label>
+  <div class="footer">
+    <a href="admin.html" class="footer-link">Admin Settings</a>
+    <a href="http://tokeno.net" class="footer-link">Visit Tokeno.net</a>
   </div>
-
-  <button id="soundOff">Sound Off</button>
 
   <script>
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -348,20 +411,20 @@
 
       // Draw compass circle
       ctx.beginPath();
-      ctx.arc(100, 100, 90, 0, 2 * Math.PI);
+      ctx.arc(75, 75, 65, 0, 2 * Math.PI); // Adjusted for smaller canvas
       ctx.strokeStyle = '#333';
       ctx.lineWidth = 2;
       ctx.stroke();
 
       // Draw arrow
       ctx.save();
-      ctx.translate(100, 100);
+      ctx.translate(75, 75); // Adjusted for smaller canvas
       ctx.rotate(bearing * Math.PI / 180);
       ctx.beginPath();
-      ctx.moveTo(0, -60);
-      ctx.lineTo(20, 20);
+      ctx.moveTo(0, -45); // Scaled down for smaller canvas
+      ctx.lineTo(15, 15);
       ctx.lineTo(0, 0);
-      ctx.lineTo(-20, 20);
+      ctx.lineTo(-15, 15);
       ctx.closePath();
       ctx.fillStyle = 'red';
       ctx.fill();
@@ -392,7 +455,7 @@
       document.getElementById('toggleManual').textContent = 'Toggle Manual Mode';
       document.getElementById('toggleManual').classList.remove('active');
       document.getElementById('manualControls').style.display = 'none';
-      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 200, 200);
+      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 150, 150);
       updateMessage('');
       updateDebugStatus('');
       document.getElementById('fallbackArrow').style.display = 'none';
