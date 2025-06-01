@@ -859,9 +859,9 @@
       document.querySelectorAll('input[type="range"]').forEach(slider => slider.value = 1);
       document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
       for (let i = 1; i <= 4; i++) {
-        document.getElementById(`sound${i}`).textContent = `Sound ${i}: Not found`;
-        document.getElementById(`sound${i}`).querySelector('.status').classList.remove('found');
-        document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
+        const soundElement = document.getElementById(`sound${i}`);
+        soundElement.innerHTML = `<span class="status"></span>Sound ${i}: Not found`; // Preserve status span
+        soundElement.querySelector('.status').classList.remove('found'); // Ensure not found state
       }
       sounds.forEach(sound => {
         if (sound) sound.stop();
@@ -1015,8 +1015,9 @@
               if (distance < 5 && !point.found) {
                 point.found = true;
                 foundCount++;
-                document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
-                document.getElementById(`sound${index + 1}`).querySelector('.status').classList.add('found');
+                const soundElement = document.getElementById(`sound${index + 1}`);
+                soundElement.innerHTML = `<span class="status"></span>Sound ${index + 1}: Found`; // Preserve status span
+                soundElement.querySelector('.status').classList.add('found');
                 updateMessage(`You found sound ${index + 1}`, 'success');
                 playSound(index, true);
               } else if (distance < 30 && distance >= 5) {
@@ -1030,7 +1031,7 @@
           }
         });
       }
-      if (isCompassEnabled) updateCompass(); // Update compass when position changes
+      if (isCompassEnabled) updateCompass();
     }
 
     function handleError(error) {
