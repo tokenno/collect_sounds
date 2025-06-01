@@ -254,7 +254,7 @@
       .container {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr; /* Three columns for the layout */
-        grid-template-rows: auto auto; /* Two rows: compass row and cards row */
+        grid-template-rows: auto auto auto; /* Three rows: compass, controls/collected, manual */
         gap: 10px;
         width: 90%;
         max-width: 350px;
@@ -289,17 +289,20 @@
         grid-column: 1 / 2; /* Left column */
         grid-row: 2;
       }
-      .manual {
-        grid-column: 2 / 3; /* Middle column */
-        grid-row: 2;
-      }
       .collected {
         grid-column: 3 / 4; /* Right column */
         grid-row: 2;
       }
+      .manual {
+        grid-column: 1 / 4; /* Span all columns */
+        grid-row: 3; /* Third row */
+        justify-self: center; /* Center within the spanned columns */
+        width: 100%;
+        max-width: 200px; /* Slightly wider for better readability */
+      }
       .card {
         width: 100%;
-        max-width: 100px; /* Smaller cards to fit three in a row */
+        max-width: 100px; /* Smaller cards for controls and collected */
         min-height: 120px;
         padding: 5px;
       }
