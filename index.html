@@ -29,7 +29,7 @@
     h2 {
       font-size: 1em;
     }
-    #gpsStatus, #message, #debugStatus, #targetDistance {
+    #gpsStatus, #message, #debugStatus {
       font-size: 0.9em;
       margin: 5px 0;
       padding: 5px;
@@ -38,6 +38,18 @@
       text-align: center;
       width: 90%;
       max-width: 350px;
+    }
+    #targetDistance {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(0, 212, 255, 0.2);
+      border-radius: 8px;
+      text-align: center;
+      width: 90%;
+      max-width: 350px;
+      box-shadow: 0 2px 6px rgba(0, 212, 255, 0.3);
     }
     #message.success {
       color: #00e676;
@@ -138,7 +150,7 @@
       transition: transform 0.2s;
       display: flex;
       flex-direction: column;
-      justify-content: flex-start; /* Align content to the top */
+      justify-content: flex-start;
       min-height: 150px;
     }
     .card:hover {
@@ -160,17 +172,28 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      align-items: flex-start; /* Ensure wrapped items start at the top */
+      align-items: flex-start;
     }
     .target {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      align-items: flex-start; /* Ensure wrapped items start at the top */
+      align-items: flex-start;
     }
     .collected p {
       margin: 2px 0;
       font-size: 0.9em;
+    }
+    .collected .status {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      border-radius: 50%;
+      background-color: #ff1744; /* Red for not found */
+    }
+    .collected .status.found {
+      background-color: #00e676; /* Green for found */
     }
     .manual p {
       margin: 3px 0;
@@ -258,8 +281,11 @@
         padding: 5px 10px;
         font-size: 0.8em;
       }
-      #gpsStatus, #message, #debugStatus, #targetDistance {
+      #gpsStatus, #message, #debugStatus {
         font-size: 0.8em;
+      }
+      #targetDistance {
+        font-size: 1.0em;
       }
       #compassCanvas {
         width: 140px;
@@ -277,6 +303,10 @@
       button.delete-btn {
         padding: 4px 8px;
         font-size: 0.7em;
+      }
+      .collected .status {
+        width: 10px;
+        height: 10px;
       }
     }
   </style>
@@ -324,10 +354,10 @@
 
     <div class="card collected">
       <h2>Collected Sounds</h2>
-      <p id="sound1">Sound 1: Not found</p>
-      <p id="sound2">Sound 2: Not found</p>
-      <p id="sound3">Sound 3: Not found</p>
-      <p id="sound4">Sound 4: Not found</p>
+      <p id="sound1"><span class="status"></span>Sound 1: Not found</p>
+      <p id="sound2"><span class="status"></span>Sound 2: Not found</p>
+      <p id="sound3"><span class="status"></span>Sound 3: Not found</p>
+      <p id="sound4"><span class="status"></span>Sound 4: Not found</p>
     </div>
 
     <div class="card manual">
@@ -770,7 +800,7 @@
       ctx.restore();
 
       fallbackArrow.style.display = 'none';
-      requestAnimationFrame(updateCompass);
+      if (isCompassEnabled) requestAnimationFrame(updateCompass); // Keep loop running
     }
 
     async function resetAll(isAutomatic = false) {
@@ -787,7 +817,6 @@
       foundCount = 0;
 
       if (isAutomatic) {
-        // Automatic reset: Preserve GPS points and recordings
         targetPoints = targetPoints.map(point => ({
           lat: point.lat,
           lng: point.lng,
@@ -798,7 +827,6 @@
           hasRecording: point.hasRecording
         }));
       } else {
-        // Manual reset: Delete everything
         targetPoints = [
           { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
           { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
@@ -832,6 +860,7 @@
       document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
       for (let i = 1; i <= 4; i++) {
         document.getElementById(`sound${i}`).textContent = `Sound ${i}: Not found`;
+        document.getElementById(`sound${i}`).querySelector('.status').classList.remove('found');
         document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
       }
       sounds.forEach(sound => {
@@ -987,6 +1016,7 @@
                 point.found = true;
                 foundCount++;
                 document.getElementById(`sound${index + 1}`).textContent = `Sound ${index + 1}: Found`;
+                document.getElementById(`sound${index + 1}`).querySelector('.status').classList.add('found');
                 updateMessage(`You found sound ${index + 1}`, 'success');
                 playSound(index, true);
               } else if (distance < 30 && distance >= 5) {
@@ -1000,7 +1030,7 @@
           }
         });
       }
-      updateCompass();
+      if (isCompassEnabled) updateCompass(); // Update compass when position changes
     }
 
     function handleError(error) {
@@ -1153,7 +1183,7 @@
         await openDB();
         await preloadAudioFiles();
         await decodeRecordedAudio();
-        await resetAll(true); // Automatic reset on page load, preserving GPS points and recordings
+        await resetAll(true);
         updateRecordingUI();
         loadAdminCoordinates();
         updateDebugStatus('App initialized');
