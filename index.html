@@ -580,15 +580,20 @@
     }
 
     function initializeGainNodes() {
-      gainNodes = [];
-      for (let i = 0; i < 4; i++) {
-        const gainNode = audioCtx.createGain();
-        gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
-        gainNode.connect(audioCtx.destination);
-        gainNodes.push(gainNode);
+      try {
+        gainNodes = [];
+        for (let i = 0; i < 4; i++) {
+          const gainNode = audioCtx.createGain();
+          gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+          gainNode.connect(audioCtx.destination);
+          gainNodes.push(gainNode);
+        }
+        gainNodesInitialized = true;
+        updateDebugStatus('Gain nodes initialized');
+      } catch (error) {
+        updateDebugStatus(`Error initializing gain nodes: ${error.message}`);
+        updateMessage('Audio setup failed', 'error');
       }
-      gainNodesInitialized = true;
-      updateDebugStatus('Gain nodes initialized');
     }
 
     async function preloadAudioFiles() {
@@ -602,7 +607,7 @@
           updateDebugStatus(`Preloaded ${audioFiles[i]}`);
         } catch (error) {
           updateMessage(`Failed to load ${audioFiles[i]}: ${error.message}`, 'error');
-          updateDebugStatus(`Audio preload error ${audioFiles[i]}: ${error.message}`);
+          updateDebugStatus(`Audio preload error for ${audioFiles[i]}: ${error.message}`);
         }
       }
     }
@@ -614,7 +619,7 @@
           try {
             const arrayBuffer = await recordings[i].arrayBuffer();
             recordedBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
-            updateDebugStatus(`Detected recorded audio for Target ${i + 1}`);
+            updateDebugStatus(`Decoded recorded audio for Target ${i + 1}`);
           } catch (error) {
             updateDebugStatus(`Error decoding recorded audio for Target ${i + 1}: ${error.message}`);
             recordedBuffers[i] = null;
@@ -655,7 +660,6 @@
         return;
       }
 
-      // Resume audio context if suspended
       if (audioCtx.state === 'suspended') {
         try {
           await audioCtx.resume();
@@ -723,7 +727,6 @@
         return;
       }
 
-      // Resume audio context if suspended
       if (audioCtx.state === 'suspended') {
         try {
           await audioCtx.resume();
@@ -773,7 +776,7 @@
       const φ2 = lat2 * Math.PI / 180;
       const Δλ = (lon2 - lon1) * Math.PI / 180;
       const y = Math.sin(Δλ) * Math.cos(φ2);
-      const x = Math.cos(φ1) * Math.sin(φ2) +
+      const x = Math.cos(φ1) * Math.sin(φ2) -
                 Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
       const θ = Math.atan2(y, x);
       return (θ * 180 / Math.PI + 360) % 360;
@@ -785,7 +788,6 @@
       const fallbackArrow = document.getElementById('fallbackArrow');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      updateDebugStatus(`Compass: Enabled=${isCompassEnabled}, Selected=${selectedTarget}, Set=${targetPoints[selectedTarget - 1]?.set}, Position=${!!currentPosition}`);
       if (!isCompassEnabled) {
         updateDebugStatus('Compass disabled.');
         return;
@@ -902,11 +904,11 @@
       }
       if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
-        mediaRecorder.stop();
         isRecording = false;
         document.querySelectorAll('.record-btn').forEach(btn => {
-          btn.classList.remove('active'));
-        }
+          btn.classList.remove('active');
+          btn.textContent = 'Record Sound';
+        });
       }
       loadAdminCoordinates();
       document.querySelectorAll('.setGps').forEach(button => {
@@ -942,13 +944,13 @@
         btn.addEventListener('click', recordSoundHandler);
       });
       document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', deleteRecordingHandler));
+        btn.addEventListener('click', deleteRecordingHandler);
       });
     }
 
     async function recordSoundHandler(event) {
       const button = event.target;
-      const pointIndex = parseInt(button.dataset.point) - 1);
+      const pointIndex = parseInt(button.dataset.point) - 1;
 
       if (!isRecording) {
         try {
@@ -958,9 +960,9 @@
           mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) {
               recordedChunks.push(e.data);
-              updateDebugStatus(`Recording data available for Target ${pointIndex + 1}, size: ${e.data.size}`);
+              updateDebugStatus(`Recorded data available for Target ${pointIndex + 1}, size: ${e.data.size}`);
             } else {
-              updateDebugStatus(`No recording data available for Target ${pointIndex + 1}`);
+              updateDebugStatus(`No recorded data available for Target ${pointIndex + 1}`);
             }
           };
           mediaRecorder.onstop = async () => {
@@ -984,8 +986,8 @@
                 btn.addEventListener('click', setGpsHandler);
               });
               document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', deleteRecordingHandler));
-            });
+                btn.addEventListener('click', deleteRecordingHandler);
+              });
             } catch (error) {
               updateDebugStatus(`Error saving or decoding recording for Target ${pointIndex + 1}: ${error.message}`);
               updateMessage(`Error saving recording`, 'error');
@@ -1000,7 +1002,7 @@
         } catch (error) {
           updateMessage(`Failed to access microphone: ${error.message}`, 'error');
           updateDebugStatus(`Microphone access error: ${error.message}`);
-        });
+        }
       } else {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
@@ -1009,13 +1011,12 @@
         button.classList.remove('active');
         button.textContent = 'Record Sound';
         updateDebugStatus(`Stopped recording for Target ${pointIndex + 1}`);
-        }
-      });
+      }
     }
 
     async function deleteRecordingHandler(event) {
       const button = event.target;
-      const pointIndex = parseInt(button.datasetPoint) - 1);
+      const pointIndex = parseInt(button.dataset.point) - 1;
       try {
         await deleteRecording(pointIndex);
         targetPoints[pointIndex].hasRecording = false;
@@ -1024,12 +1025,12 @@
         targetPoints[pointIndex].lng = null;
         targetPoints[pointIndex].set = false;
         updateDebugStatus(`Recording deleted for Target ${pointIndex + 1}`);
-        updateMessage(`Removed recording deleted for Target ${pointIndex + 1}`, 'success');
+        updateMessage(`Recording deleted for Target ${pointIndex + 1}`, 'success');
         updateRecordingUI();
-      catch (error) {
+      } catch (error) {
         updateDebugStatus(`Error deleting recording for Target ${pointIndex + 1}: ${error.message}`);
         updateMessage(`Error deleting recording`, 'error');
-      });
+      }
     }
 
     function updatePosition(position) {
@@ -1066,6 +1067,15 @@
     function handleError(error) {
       document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
       updateDebugStatus(`GPS Error: ${error.message}`);
+      updateMessage(`GPS unavailable: ${error.message}`, 'error');
+    }
+
+    function initializeGPS() {
+      navigator.geolocation.getCurrentPosition(
+        updatePosition,
+        handleError,
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
     }
 
     document.getElementById('startTracking').addEventListener('click', async () => {
@@ -1089,6 +1099,9 @@
           timeout: 5000,
           maximumAge: 0
         });
+      } else {
+        // Stop watching position when tracking is off
+        navigator.geolocation.clearWatch();
       }
     });
 
@@ -1201,11 +1214,10 @@
       }
     });
 
-    document.getElementById('resetAll').addEventListener('click', () => resetAll());
+    document.getElementById('resetAll').addEventListener('click', () => resetAll(false));
 
     async function initialize() {
       try {
-        // Initialize gain nodes at startup
         initializeGainNodes();
         await openDB();
         await preloadAudioFiles();
@@ -1213,6 +1225,7 @@
         await resetAll(true);
         updateRecordingUI();
         loadAdminCoordinates();
+        initializeGPS(); // Attempt to get initial GPS position
         updateDebugStatus('App initialized');
       } catch (error) {
         updateDebugStatus(`Initialization error: ${error.message}`);
