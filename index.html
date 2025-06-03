@@ -444,7 +444,7 @@
     let selectedTarget = null;
     let audioBuffers = [null, null, null, null];
     let recordedBuffers = [null, null, null, null];
-    let sounds = [[], [], [], []]; // Array of arrays to track multiple sound sources per target
+    let sounds = [[], [], [], []];
     let gainNodes = [];
     let beepSource = null;
     let lastBeepTime = 0;
@@ -602,7 +602,7 @@
           updateDebugStatus(`Preloaded ${audioFiles[i]}`);
         } catch (error) {
           updateMessage(`Failed to load ${audioFiles[i]}: ${error.message}`, 'error');
-          updateDebugStatus(`Audio preload error for ${audioFiles[i]}: ${error.message}`);
+          updateDebugStatus(`Audio preload error ${audioFiles[i]}: ${error.message}`);
         }
       }
     }
@@ -614,7 +614,7 @@
           try {
             const arrayBuffer = await recordings[i].arrayBuffer();
             recordedBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
-            updateDebugStatus(`Decoded recorded audio for Target ${i + 1}`);
+            updateDebugStatus(`Detected recorded audio for Target ${i + 1}`);
           } catch (error) {
             updateDebugStatus(`Error decoding recorded audio for Target ${i + 1}: ${error.message}`);
             recordedBuffers[i] = null;
@@ -655,14 +655,21 @@
         return;
       }
 
-      if (!audioContextResumed) {
-        updateDebugStatus(`AudioContext not resumed, skipping playback for Sound ${index + 1}`);
-        updateMessage('Tap "Start Tracking" to enable audio', 'warning');
-        return;
+      // Resume audio context if suspended
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+          audioContextResumed = true;
+          updateDebugStatus(`AudioContext resumed for playSound, state: ${audioCtx.state}`);
+        } catch (error) {
+          updateDebugStatus(`Failed to resume AudioContext: ${error.message}`);
+          updateMessage('Failed to enable audio playback', 'error');
+          return;
+        }
       }
 
       if (!gainNodesInitialized || !gainNodes[index]) {
-        updateDebugStatus(`Gain nodes not initialized, skipping playback for Sound ${index + 1}`);
+        updateDebugStatus(`Gain nodes not initialized for Sound ${index + 1}`);
         updateMessage('Audio setup incomplete, please try again', 'error');
         return;
       }
@@ -677,19 +684,7 @@
         updateDebugStatus(`Using default sound for Target ${index + 1}`);
       } else {
         updateMessage(`Audio not loaded for Sound ${index + 1}`, 'warning');
-        updateDebugStatus(`Audio not loaded for Sound ${index + 1}`);
         return;
-      }
-
-      if (audioCtx.state === 'suspended') {
-        try {
-          await audioCtx.resume();
-          updateDebugStatus(`AudioContext resumed, state: ${audioCtx.state}`);
-        } catch (error) {
-          updateDebugStatus(`Failed to resume AudioContext: ${error.message}`);
-          updateMessage('Failed to enable audio playback', 'error');
-          return;
-        }
       }
 
       const source = audioCtx.createBufferSource();
@@ -698,7 +693,6 @@
       source.connect(gainNodes[index]);
       source.start();
 
-      // Add the new source to the sounds array for this index
       sounds[index].push(source);
 
       if (!loop) {
@@ -729,9 +723,15 @@
         return;
       }
 
-      if (!audioContextResumed) {
-        updateDebugStatus(`AudioContext not resumed, skipping beep`);
-        return;
+      // Resume audio context if suspended
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+          updateDebugStatus(`AudioContext resumed for beep, state: ${audioCtx.state}`);
+        } catch (error) {
+          updateDebugStatus(`Failed to resume AudioContext for beep: ${error.message}`);
+          return;
+        }
       }
 
       if (!gainNodesInitialized) {
@@ -743,16 +743,6 @@
       const interval = Math.max(100, 1000 - distance * 30);
       if (now - lastBeepTime < interval) return;
       lastBeepTime = now;
-
-      if (audioCtx.state === 'suspended') {
-        try {
-          await audioCtx.resume();
-          updateDebugStatus(`AudioContext resumed for beep, state: ${audioCtx.state}`);
-        } catch (error) {
-          updateDebugStatus(`Failed to resume AudioContext for beep: ${error.message}`);
-          return;
-        }
-      }
 
       if (!beepSource) {
         beepSource = createBeep();
@@ -783,7 +773,7 @@
       const φ2 = lat2 * Math.PI / 180;
       const Δλ = (lon2 - lon1) * Math.PI / 180;
       const y = Math.sin(Δλ) * Math.cos(φ2);
-      const x = Math.cos(φ1) * Math.sin(φ2) -
+      const x = Math.cos(φ1) * Math.sin(φ2) +
                 Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
       const θ = Math.atan2(y, x);
       return (θ * 180 / Math.PI + 360) % 360;
@@ -880,7 +870,6 @@
         }
       }
 
-      // Stop all playing sounds
       sounds.forEach(targetSounds => {
         targetSounds.forEach(sound => sound.stop());
       });
@@ -913,8 +902,11 @@
       }
       if (mediaRecorder && mediaRecorder.state === 'recording') {
         mediaRecorder.stop();
+        mediaRecorder.stop();
         isRecording = false;
-        document.querySelectorAll('.record-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.record-btn').forEach(btn => {
+          btn.classList.remove('active'));
+        }
       }
       loadAdminCoordinates();
       document.querySelectorAll('.setGps').forEach(button => {
@@ -950,13 +942,13 @@
         btn.addEventListener('click', recordSoundHandler);
       });
       document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', deleteRecordingHandler);
+        btn.addEventListener('click', deleteRecordingHandler));
       });
     }
 
     async function recordSoundHandler(event) {
       const button = event.target;
-      const pointIndex = parseInt(button.dataset.point) - 1;
+      const pointIndex = parseInt(button.dataset.point) - 1);
 
       if (!isRecording) {
         try {
@@ -966,9 +958,9 @@
           mediaRecorder.ondataavailable = (e) => {
             if (e.data.size > 0) {
               recordedChunks.push(e.data);
-              updateDebugStatus(`Recorded data available for Target ${pointIndex + 1}, size: ${e.data.size}`);
+              updateDebugStatus(`Recording data available for Target ${pointIndex + 1}, size: ${e.data.size}`);
             } else {
-              updateDebugStatus(`No recorded data available for Target ${pointIndex + 1}`);
+              updateDebugStatus(`No recording data available for Target ${pointIndex + 1}`);
             }
           };
           mediaRecorder.onstop = async () => {
@@ -992,8 +984,8 @@
                 btn.addEventListener('click', setGpsHandler);
               });
               document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', deleteRecordingHandler);
-              });
+                btn.addEventListener('click', deleteRecordingHandler));
+            });
             } catch (error) {
               updateDebugStatus(`Error saving or decoding recording for Target ${pointIndex + 1}: ${error.message}`);
               updateMessage(`Error saving recording`, 'error');
@@ -1008,7 +1000,7 @@
         } catch (error) {
           updateMessage(`Failed to access microphone: ${error.message}`, 'error');
           updateDebugStatus(`Microphone access error: ${error.message}`);
-        }
+        });
       } else {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
           mediaRecorder.stop();
@@ -1017,12 +1009,13 @@
         button.classList.remove('active');
         button.textContent = 'Record Sound';
         updateDebugStatus(`Stopped recording for Target ${pointIndex + 1}`);
-      }
+        }
+      });
     }
 
     async function deleteRecordingHandler(event) {
       const button = event.target;
-      const pointIndex = parseInt(button.dataset.point) - 1;
+      const pointIndex = parseInt(button.datasetPoint) - 1);
       try {
         await deleteRecording(pointIndex);
         targetPoints[pointIndex].hasRecording = false;
@@ -1031,12 +1024,12 @@
         targetPoints[pointIndex].lng = null;
         targetPoints[pointIndex].set = false;
         updateDebugStatus(`Recording deleted for Target ${pointIndex + 1}`);
-        updateMessage(`Recording deleted for Target ${pointIndex + 1}`, 'success');
+        updateMessage(`Removed recording deleted for Target ${pointIndex + 1}`, 'success');
         updateRecordingUI();
-      } catch (error) {
+      catch (error) {
         updateDebugStatus(`Error deleting recording for Target ${pointIndex + 1}: ${error.message}`);
         updateMessage(`Error deleting recording`, 'error');
-      }
+      });
     }
 
     function updatePosition(position) {
@@ -1059,7 +1052,7 @@
                 soundElement.innerHTML = `<span class="status"></span>Sound ${index + 1}: Found`;
                 soundElement.querySelector('.status').classList.add('found');
                 updateMessage(`You found sound ${index + 1}`, 'success');
-                playSound(index, true); // Start sound without stopping others
+                playSound(index, true);
               } else if (distance < 30 && distance >= 5) {
                 playBeep(distance);
               }
@@ -1086,10 +1079,6 @@
             audioContextResumed = true;
             updateDebugStatus(`AudioContext resumed on Start Tracking, state: ${audioCtx.state}`);
             updateMessage('Audio playback enabled', 'success');
-            initializeGainNodes();
-            document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
-              gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
-            });
           } catch (error) {
             updateDebugStatus(`Failed to resume AudioContext on Start Tracking: ${error.message}`);
             updateMessage('Failed to enable audio playback', 'error');
@@ -1123,7 +1112,6 @@
       document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
       document.getElementById('toggleManual').textContent = manualMode ? 'Disable & Reset' : 'Toggle Manual Mode';
       document.getElementById('toggleManual').classList.toggle('active', manualMode);
-      updateDebugStatus(`Manual mode: ${manualMode}`);
       if (manualMode && localStorage.getItem('targetPoints')) {
         updateMessage('Warning: Manual mode enabled, admin points ignored.', 'warning');
         targetPoints = targetPoints.map(point => ({
@@ -1165,11 +1153,11 @@
 
     document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
       slider.addEventListener('input', () => {
-        if (gainNodesInitialized && gainNodes[index]) {
+        if (gainNodes[index]) {
           gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
           updateDebugStatus(`Volume ${index + 1} set to ${slider.value}`);
         } else {
-          updateDebugStatus(`Gain nodes not initialized, cannot adjust volume for Sound ${index + 1}`);
+          updateDebugStatus(`Gain nodes not available, cannot adjust volume for Sound ${index + 1}`);
         }
       });
     });
@@ -1213,10 +1201,12 @@
       }
     });
 
-    document.getElementById('resetAll').addEventListener('click', () => resetAll(false));
+    document.getElementById('resetAll').addEventListener('click', () => resetAll());
 
     async function initialize() {
       try {
+        // Initialize gain nodes at startup
+        initializeGainNodes();
         await openDB();
         await preloadAudioFiles();
         await decodeRecordedAudio();
