@@ -161,9 +161,9 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      padding: 10px;
+      padding: 5px;
     }
-    .controls, .target, .collected, .manual {
+    .controls, .target-card, .targets, .collected, .manual {
       gap: 5px;
       width: 100%;
       margin-top: 0;
@@ -174,7 +174,7 @@
       justify-content: center;
       align-items: flex-start;
     }
-    .target {
+    .targets {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
@@ -193,7 +193,7 @@
       background-color: #ff1744; /* Red for not found */
     }
     .collected .status.found {
-      background-color: #00e676; /* Green for found */
+      background-color: #00e676;
     }
     .manual p {
       margin: 3px 0;
@@ -201,30 +201,31 @@
       font-size: 0.9em;
     }
     .manual button {
-      margin: 0 3px;
+      margin: 0 5px;
       padding: 6px 12px;
     }
-    #compassCanvas {
+    #compass {
       border: 2px solid #00d4ff;
       border-radius: 50%;
       background: #0f0f0f;
-      box-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
-      width: 180px;
-      height: 180px;
+      border-color: #00ff88;
+      box-shadow: 0 0 10px rgba(0, 191, 255, 0.6);
+      width: 120px;
+      height: 120px;
     }
     #fallbackArrow {
       display: none;
       width: 0;
       height: 0;
-      border-left: 20px solid transparent;
-      border-right: 20px solid transparent;
-      border-bottom: 40px solid #ff1744;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-bottom: 8px solid #ff0000;
       transform-origin: center bottom;
     }
     .mixer {
-      width: 250px;
+      width: 100%;
       align-items: center;
-      gap: 5px;
+      gap: 0px;
     }
     .mixer h2 {
       margin: 0 0 5px;
@@ -234,8 +235,8 @@
       flex-direction: column;
       align-items: center;
       margin: 3px 0;
-      color: #b0bec5;
       font-size: 0.9em;
+      color: #80d4ff;
     }
     .mixer input[type="range"] {
       width: 100%;
@@ -248,33 +249,32 @@
       gap: 10px;
       justify-content: center;
       width: 100%;
-      background: rgba(255, 255, 255, 0.05);
+      background-color: rgba(0,0,0,0.1);
     }
     @media (max-width: 600px) {
       .container {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: auto auto auto;
-        gap: 10px;
+        flex-direction: column;
         width: 90%;
         max-width: 350px;
-        justify-items: center;
+        justify-items: auto;
         padding: 10px;
+        gap: 0px;
       }
       .compass-container {
-        grid-column: 2 / 3;
-        grid-row: 1;
-      }
-      .target {
         grid-column: 1 / 2;
         grid-row: 1;
       }
+      .targets {
+        grid-column: 1 / 2;
+        grid-row: 2;
+        width: 100px;
+      }
       .mixer {
-        grid-column: 3 / 4;
-        grid-row: 1;
-        width: 100%;
-        max-width: 100px;
-        padding: 5px;
+        grid-column: 1 / 2;
+        grid-row: 3;
+        width: 100px;
+        padding: 0px;
       }
       .mixer h2 {
         font-size: 0.8em;
@@ -287,27 +287,28 @@
       }
       .controls {
         grid-column: 1 / 2;
-        grid-row: 2;
+        grid-row: 4;
+        width: 100px;
       }
       .collected {
-        grid-column: 3 / 4;
-        grid-row: 2;
+        grid-column: 1 / 2;
+        grid-row: 5;
+        width: 100px;
       }
       .manual {
-        grid-column: 1 / 4;
-        grid-row: 3;
-        justify-self: center;
-        width: 100%;
-        max-width: 200px;
+        grid-column: 1 / 2;
+        grid-row: 6;
+        width: 100px;
+        justify-self: auto;
       }
       .card {
-        width: 100%;
+        width: 100px;
         max-width: 100px;
-        min-height: 120px;
+        min-height: 100px;
         padding: 5px;
       }
-      .controls, .target, .collected, .manual {
-        gap: 3px;
+      .controls, .targets, .collected, .manual {
+        gap: 0px;
       }
       h1 {
         font-size: 1.5em;
@@ -336,14 +337,14 @@
       #targetDistance {
         font-size: 1.0em;
       }
-      #compassCanvas {
-        width: 100px;
-        height: 100px;
+      #compass {
+        width: 60px;
+        height: 60px;
       }
       #fallbackArrow {
-        border-left: 10px solid transparent;
-        border-right: 10px solid transparent;
-        border-bottom: 20px solid #ff1744;
+        border-left: 3px solid transparent;
+        border-right: 3px solid transparent;
+        border-bottom: 6px solid #ff4444;
       }
       button.delete-btn {
         padding: 3px 6px;
@@ -353,7 +354,7 @@
         width: 8px;
         height: 8px;
       }
-      .collected p {
+      .collected-items p {
         font-size: 0.7em;
       }
     }
@@ -361,23 +362,23 @@
 </head>
 <body>
   <h1>Sound Hunt</h1>
-  <p>Explore and discover hidden sounds around you!</p>
+  <p id="description">Explore and discover hidden sounds around you!</p>
   <div id="gpsStatus">Waiting for GPS...</div>
-  <div id="message">Tap "Start Tracking" to enable audio playback</div>
+  <div id="message"></div>
   <div id="debugStatus"></div>
   <div id="targetDistance"></div>
 
-  <div class="centered-section">
-    <button id="startTracking" class="start-tracking">Start Tracking</button>
+  <div class="center-section">
+    <button id="startTracking" class="start-tracking">Track</button>
   </div>
 
   <div class="container">
     <div class="compass-container">
-      <canvas id="compassCanvas" width="180" height="180"></canvas>
+      <canvas id="compassCanvas" width="120" height="120"></canvas>
       <div id="fallbackArrow"></div>
     </div>
 
-    <div class="card target">
+    <div class="card targets">
       <h2>Select Target</h2>
       <button class="targetBtn" data-target="1">Target 1</button>
       <button class="targetBtn" data-target="2">Target 2</button>
@@ -385,7 +386,7 @@
       <button class="targetBtn" data-target="4">Target 4</button>
     </div>
 
-    <div class="mixer">
+    <div class="mixer card">
       <h2>Mixer</h2>
       <label>Sound 1: <input type="range" id="volume1" min="0" max="1" step="0.01" value="1"></label>
       <label>Sound 2: <input type="range" id="volume2" min="0" max="1" step="0.01" value="1"></label>
@@ -396,7 +397,7 @@
     <div class="card controls">
       <h2>Controls</h2>
       <button id="enableCompass">Enable Compass</button>
-      <button id="resetAll">Reset All</button>
+      <button id="resetAll">Reset</button>
       <button id="soundToggle">Sound Off</button>
     </div>
 
@@ -410,7 +411,7 @@
 
     <div class="card manual">
       <h2>Manual Mode</h2>
-      <button id="toggleManual" title="Enable to set your own points">Toggle Manual Mode</button>
+      <button id="toggleManual" title="Enable to set your own points">Toggle Manual</button>
       <div id="manualControls" style="display: none;">
         <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button></p>
         <p id="manual2">Manual 2: <button class="setGps" data-point="2">Set GPS</button></p>
@@ -421,8 +422,8 @@
   </div>
 
   <div class="footer">
-    <a href="admin.html" class="footer-link">Admin Settings</a>
-    <a href="http://tokeno.net" class="footer-link">Visit Tokeno.net</a>
+    <a href="admin.html" class="footer-link">Admin</a>
+    <a href="http://tokeno.net" class="footer-link">Tokeno.net</a>
     <a href="help.html" class="footer-link">Help</a>
   </div>
 
@@ -452,6 +453,7 @@
     let mediaRecorder = null;
     let recordedChunks = [];
     let isRecording = false;
+    let watchId = null;
 
     const DB_NAME = 'SoundHuntDB';
     const STORE_NAME = 'recordings';
@@ -490,11 +492,11 @@
         const requests = [];
         for (let i = 0; i < 4; i++) {
           requests.push(new Promise((res) => {
-            const request = store.get(`recordedSound${i}`);
+            const request = store.get(`RecordedSound${i}`);
             request.onsuccess = () => {
               if (request.result) {
                 targetPoints[i].hasRecording = true;
-                updateDebugStatus(`Recording exists for Target ${i + 1}`);
+                updateDebugStatus(`Recording found for Target ${i + 1}`);
                 res(request.result.blob);
               } else {
                 targetPoints[i].hasRecording = false;
@@ -513,13 +515,13 @@
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.delete(`recordedSound${index}`);
+        const request = store.delete(`RecordedSound${index}`);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
       });
     }
 
-    function clearRecordings() {
+    function clearRecorder() {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
@@ -530,7 +532,8 @@
     }
 
     function updateDebugStatus(message) {
-      document.getElementById('debugStatus').textContent = message || 'Debug: Ready';
+      const debugStatus = document.getElementById('debugStatus');
+      debugStatus.textContent = message || 'Debug: Ready';
       console.log('Debug:', message);
     }
 
@@ -541,7 +544,7 @@
       setTimeout(() => {
         messageDiv.textContent = '';
         messageDiv.className = '';
-      }, 5000);
+      }, 3000);
       console.log('Message:', message, type);
     }
 
@@ -581,18 +584,25 @@
 
     function initializeGainNodes() {
       try {
+        if (gainNodesInitialized) {
+          updateDebugStatus('Gain nodes already initialized, skipping.');
+          return;
+        }
+        updateDebugStatus('Starting gain nodes initialization...');
         gainNodes = [];
         for (let i = 0; i < 4; i++) {
           const gainNode = audioCtx.createGain();
           gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
           gainNode.connect(audioCtx.destination);
           gainNodes.push(gainNode);
+          updateDebugStatus(`Gain node ${i + 1} created and connected.`);
         }
         gainNodesInitialized = true;
-        updateDebugStatus('Gain nodes initialized');
+        updateDebugStatus('Gain nodes successfully initialized.');
       } catch (error) {
+        gainNodesInitialized = false;
         updateDebugStatus(`Error initializing gain nodes: ${error.message}`);
-        updateMessage('Audio setup failed', 'error');
+        updateMessage('Audio setup failed, please reload the page.', 'error');
       }
     }
 
@@ -613,21 +623,19 @@
     }
 
     async function decodeRecordedAudio() {
-      const recordings = await loadRecordings();
-      for (let i = 0; i < recordings.length; i++) {
-        if (recordings[i]) {
-          try {
+      try {
+        const recordings = await loadRecordings();
+        for (let i = 0; i < recordings.length; i++) {
+          if (recordings[i]) {
             const arrayBuffer = await recordings[i].arrayBuffer();
             recordedBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
             updateDebugStatus(`Decoded recorded audio for Target ${i + 1}`);
-          } catch (error) {
-            updateDebugStatus(`Error decoding recorded audio for Target ${i + 1}: ${error.message}`);
+          } else {
             recordedBuffers[i] = null;
-            targetPoints[i].hasRecording = false;
           }
-        } else {
-          recordedBuffers[i] = null;
         }
+      } catch (error) {
+        updateDebugStatus(`Error decoding recorded audio: ${error.message}`);
       }
     }
 
@@ -673,7 +681,7 @@
       }
 
       if (!gainNodesInitialized || !gainNodes[index]) {
-        updateDebugStatus(`Gain nodes not initialized for Sound ${index + 1}`);
+        updateDebugStatus(`Gain nodes not initialized for Sound ${index + 1}, gainNodesInitialized: ${gainNodesInitialized}, gainNodes[${index}]: ${!!gainNodes[index]}`);
         updateMessage('Audio setup incomplete, please try again', 'error');
         return;
       }
@@ -846,6 +854,11 @@
       selectedTarget = null;
       foundCount = 0;
 
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+
       if (isAutomatic) {
         targetPoints = targetPoints.map(point => ({
           lat: point.lat,
@@ -865,7 +878,7 @@
         ];
         recordedBuffers = [null, null, null, null];
         try {
-          await clearRecordings();
+          await clearRecorder();
           updateDebugStatus('All recordings cleared from storage');
         } catch (error) {
           updateDebugStatus(`Error clearing recordings: ${error.message}`);
@@ -873,19 +886,25 @@
       }
 
       sounds.forEach(targetSounds => {
-        targetSounds.forEach(sound => sound.stop());
+        targetSounds.forEach(sound => {
+          try {
+            sound.stop();
+          } catch (e) {
+            updateDebugStatus(`Error stopping sound: ${e.message}`);
+          }
+        });
       });
       sounds = [[], [], [], []];
 
-      document.getElementById('startTracking').textContent = 'Start Tracking';
+      document.getElementById('startTracking').textContent = 'Track';
       document.getElementById('startTracking').classList.remove('active');
       document.getElementById('enableCompass').textContent = 'Enable Compass';
       document.getElementById('enableCompass').classList.remove('active');
-      document.getElementById('toggleManual').textContent = 'Toggle Manual Mode';
+      document.getElementById('toggleManual').textContent = 'Toggle Manual';
       document.getElementById('toggleManual').classList.remove('active');
       document.getElementById('manualControls').style.display = 'none';
-      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 180, 180);
-      updateMessage('Tap "Start Tracking" to enable audio playback');
+      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 120, 120);
+      updateMessage('Tap "Track" to enable audio playback');
       updateDebugStatus('');
       document.getElementById('fallbackArrow').style.display = 'none';
       document.getElementById('targetDistance').textContent = '';
@@ -899,7 +918,11 @@
         soundElement.querySelector('.status').classList.remove('found');
       }
       if (beepSource) {
-        beepSource.oscillator.stop();
+        try {
+          beepSource.oscillator.stop();
+        } catch (e) {
+          updateDebugStatus(`Error stopping beep source: ${e.message}`);
+        }
         beepSource = null;
       }
       if (mediaRecorder && mediaRecorder.state === 'recording') {
@@ -910,10 +933,8 @@
           btn.textContent = 'Record Sound';
         });
       }
+      initializeGainNodes();
       loadAdminCoordinates();
-      document.querySelectorAll('.setGps').forEach(button => {
-        button.addEventListener('click', setGpsHandler);
-      });
       updateRecordingUI();
     }
 
@@ -981,9 +1002,10 @@
               updateDebugStatus(`Recording saved for Target ${pointIndex + 1}`);
               updateMessage(`Recording saved for Target ${pointIndex + 1}`, 'success');
               await playSound(pointIndex, false);
-              document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: <button class="setGps" data-point="${pointIndex + 1}">Set GPS</button><button class="delete-btn" data-point="${pointIndex + 1}">Delete Recording</button>`;
-              document.querySelectorAll('.setGps').forEach(btn => {
-                btn.addEventListener('click', setGpsHandler);
+              let deleteButtonHtml = `<button class="delete-btn" data-point="${pointIndex + 1}">Delete Recording</button>`;
+              document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${targetPoints[pointIndex].lat.toFixed(4)}, Lng ${targetPoints[pointIndex].lng.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>${deleteButtonHtml}`;
+              document.querySelectorAll('.record-btn').forEach(btn => {
+                btn.addEventListener('click', recordSoundHandler);
               });
               document.querySelectorAll('.delete-btn').forEach(btn => {
                 btn.addEventListener('click', deleteRecordingHandler);
@@ -1050,8 +1072,7 @@
                 point.found = true;
                 foundCount++;
                 const soundElement = document.getElementById(`sound${index + 1}`);
-                soundElement.innerHTML = `<span class="status"></span>Sound ${index + 1}: Found`;
-                soundElement.querySelector('.status').classList.add('found');
+                soundElement.innerHTML = `<span class="status found"></span>Sound ${index + 1}: Found`;
                 updateMessage(`You found sound ${index + 1}`, 'success');
                 playSound(index, true);
               } else if (distance < 30 && distance >= 5) {
@@ -1080,7 +1101,7 @@
 
     document.getElementById('startTracking').addEventListener('click', async () => {
       isTracking = !isTracking;
-      document.getElementById('startTracking').textContent = isTracking ? 'Stop Tracking' : 'Start Tracking';
+      document.getElementById('startTracking').textContent = isTracking ? 'Stop Tracking' : 'Track';
       document.getElementById('startTracking').classList.toggle('active', isTracking);
       if (isTracking) {
         if (!audioContextResumed) {
@@ -1094,14 +1115,16 @@
             updateMessage('Failed to enable audio playback', 'error');
           }
         }
-        navigator.geolocation.watchPosition(updatePosition, handleError, {
+        watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
           enableHighAccuracy: true,
           timeout: 5000,
           maximumAge: 0
         });
       } else {
-        // Stop watching position when tracking is off
-        navigator.geolocation.clearWatch();
+        if (watchId) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
       }
     });
 
@@ -1123,7 +1146,7 @@
     document.getElementById('toggleManual').addEventListener('click', () => {
       manualMode = !manualMode;
       document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
-      document.getElementById('toggleManual').textContent = manualMode ? 'Disable & Reset' : 'Toggle Manual Mode';
+      document.getElementById('toggleManual').textContent = manualMode ? 'Disable & Reset' : 'Toggle Manual';
       document.getElementById('toggleManual').classList.toggle('active', manualMode);
       if (manualMode && localStorage.getItem('targetPoints')) {
         updateMessage('Warning: Manual mode enabled, admin points ignored.', 'warning');
@@ -1183,7 +1206,13 @@
 
       if (soundMuted) {
         sounds.forEach(targetSounds => {
-          targetSounds.forEach(sound => sound.stop());
+          targetSounds.forEach(sound => {
+            try {
+              sound.stop();
+            } catch (e) {
+              updateDebugStatus(`Error stopping sound: ${e.message}`);
+            }
+          });
         });
         sounds = [[], [], [], []];
         if (beepSource) {
@@ -1218,18 +1247,23 @@
 
     async function initialize() {
       try {
+        // Initialize gain nodes first
         initializeGainNodes();
+        if (!gainNodesInitialized) {
+          throw new Error('Gain nodes initialization failed during startup.');
+        }
+
         await openDB();
         await preloadAudioFiles();
         await decodeRecordedAudio();
         await resetAll(true);
         updateRecordingUI();
         loadAdminCoordinates();
-        initializeGPS(); // Attempt to get initial GPS position
-        updateDebugStatus('App initialized');
+        initializeGPS();
+        updateDebugStatus('App fully initialized');
       } catch (error) {
         updateDebugStatus(`Initialization error: ${error.message}`);
-        updateMessage('Failed to initialize app', 'error');
+        updateMessage('Failed to initialize app, please reload the page.', 'error');
       }
     }
 
