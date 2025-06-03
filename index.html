@@ -368,7 +368,7 @@
   <div id="debugStatus"></div>
   <div id="targetDistance"></div>
 
-  <div class="center-section">
+  <div class="centered-section">
     <button id="startTracking" class="start-tracking">Track</button>
   </div>
 
@@ -492,7 +492,7 @@
         const requests = [];
         for (let i = 0; i < 4; i++) {
           requests.push(new Promise((res) => {
-            const request = store.get(`RecordedSound${i}`);
+            const request = store.get(`recordedSound${i}`);
             request.onsuccess = () => {
               if (request.result) {
                 targetPoints[i].hasRecording = true;
@@ -515,13 +515,13 @@
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.delete(`RecordedSound${index}`);
+        const request = store.delete(`recordedSound${index}`);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
       });
     }
 
-    function clearRecorder() {
+    function clearRecordings() {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
@@ -751,7 +751,13 @@
       }
 
       const now = Date.now();
-      const interval = Math.max(100, 1000 - distance * 30);
+      // Calculate interval based on distance (1000ms at 30m to 429ms at 3m)
+      let interval = 1000; // Default to 60 bpm
+      if (distance <= 30 && distance > 3) {
+        interval = Math.max(100, 1000 - 21.15 * (30 - distance)); // Linear interpolation
+      } else if (distance <= 3) {
+        interval = 429; // 140 bpm at 3m
+      }
       if (now - lastBeepTime < interval) return;
       lastBeepTime = now;
 
@@ -763,7 +769,7 @@
       setTimeout(() => {
         beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
       }, 100);
-      updateDebugStatus(`Beep played, distance: ${distance.toFixed(2)}m`);
+      updateDebugStatus(`Beep played, distance: ${distance.toFixed(2)}m, interval: ${interval}ms`);
     }
 
     function getDistance(lat1, lon1, lat2, lon2) {
@@ -878,7 +884,7 @@
         ];
         recordedBuffers = [null, null, null, null];
         try {
-          await clearRecorder();
+          await clearRecordings();
           updateDebugStatus('All recordings cleared from storage');
         } catch (error) {
           updateDebugStatus(`Error clearing recordings: ${error.message}`);
