@@ -253,8 +253,8 @@
     @media (max-width: 600px) {
       .container {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr; /* Three columns for the layout */
-        grid-template-rows: auto auto auto; /* Three rows: compass, controls/collected, manual */
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: auto auto auto;
         gap: 10px;
         width: 90%;
         max-width: 350px;
@@ -262,18 +262,18 @@
         padding: 10px;
       }
       .compass-container {
-        grid-column: 2 / 3; /* Center column */
+        grid-column: 2 / 3;
         grid-row: 1;
       }
       .target {
-        grid-column: 1 / 2; /* Left of compass */
+        grid-column: 1 / 2;
         grid-row: 1;
       }
       .mixer {
-        grid-column: 3 / 4; /* Right of compass */
+        grid-column: 3 / 4;
         grid-row: 1;
         width: 100%;
-        max-width: 100px; /* Smaller width to fit beside compass */
+        max-width: 100px;
         padding: 5px;
       }
       .mixer h2 {
@@ -286,23 +286,23 @@
         max-width: 80px;
       }
       .controls {
-        grid-column: 1 / 2; /* Left column */
+        grid-column: 1 / 2;
         grid-row: 2;
       }
       .collected {
-        grid-column: 3 / 4; /* Right column */
+        grid-column: 3 / 4;
         grid-row: 2;
       }
       .manual {
-        grid-column: 1 / 4; /* Span all columns */
-        grid-row: 3; /* Third row */
-        justify-self: center; /* Center within the spanned columns */
+        grid-column: 1 / 4;
+        grid-row: 3;
+        justify-self: center;
         width: 100%;
-        max-width: 200px; /* Slightly wider for better readability */
+        max-width: 200px;
       }
       .card {
         width: 100%;
-        max-width: 100px; /* Smaller cards for controls and collected */
+        max-width: 100px;
         min-height: 120px;
         padding: 5px;
       }
@@ -444,7 +444,7 @@
     let selectedTarget = null;
     let audioBuffers = [null, null, null, null];
     let recordedBuffers = [null, null, null, null];
-    let sounds = [];
+    let sounds = [[], [], [], []]; // Array of arrays to track multiple sound sources per target
     let gainNodes = [];
     let beepSource = null;
     let lastBeepTime = 0;
@@ -690,35 +690,24 @@
           updateMessage('Failed to enable audio playback', 'error');
           return;
         }
-      } else {
-        updateDebugStatus(`AudioContext state: ${audioCtx.state}`);
-      }
-
-      if (sounds[index]) {
-        sounds[index].stop();
-        sounds[index] = null;
       }
 
       const source = audioCtx.createBufferSource();
       source.buffer = bufferToPlay;
       source.loop = loop;
-      try {
-        source.connect(gainNodes[index]);
-        source.start();
-        updateDebugStatus(`Playing Sound ${index + 1}, loop: ${loop}, volume: ${gainNodes[index].gain.value}`);
-      } catch (error) {
-        updateDebugStatus(`Error playing Sound ${index + 1}: ${error.message}`);
-        updateMessage(`Error playing Sound ${index + 1}`, 'error');
-        return;
-      }
+      source.connect(gainNodes[index]);
+      source.start();
+
+      // Add the new source to the sounds array for this index
+      sounds[index].push(source);
 
       if (!loop) {
         source.onended = () => {
-          sounds[index] = null;
+          const soundIndex = sounds[index].indexOf(source);
+          if (soundIndex > -1) sounds[index].splice(soundIndex, 1);
           updateDebugStatus(`Sound ${index + 1} finished playing once`);
         };
       } else {
-        sounds[index] = source;
         updateDebugStatus(`Playing Sound ${index + 1} in loop`);
       }
     }
@@ -849,7 +838,7 @@
       ctx.restore();
 
       fallbackArrow.style.display = 'none';
-      if (isCompassEnabled) requestAnimationFrame(updateCompass); // Keep loop running
+      if (isCompassEnabled) requestAnimationFrame(updateCompass);
     }
 
     async function resetAll(isAutomatic = false) {
@@ -891,6 +880,12 @@
         }
       }
 
+      // Stop all playing sounds
+      sounds.forEach(targetSounds => {
+        targetSounds.forEach(sound => sound.stop());
+      });
+      sounds = [[], [], [], []];
+
       document.getElementById('startTracking').textContent = 'Start Tracking';
       document.getElementById('startTracking').classList.remove('active');
       document.getElementById('enableCompass').textContent = 'Enable Compass';
@@ -909,13 +904,9 @@
       document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
       for (let i = 1; i <= 4; i++) {
         const soundElement = document.getElementById(`sound${i}`);
-        soundElement.innerHTML = `<span class="status"></span>Sound ${i}: Not found`; // Preserve status span
-        soundElement.querySelector('.status').classList.remove('found'); // Ensure not found state
+        soundElement.innerHTML = `<span class="status"></span>Sound ${i}: Not found`;
+        soundElement.querySelector('.status').classList.remove('found');
       }
-      sounds.forEach(sound => {
-        if (sound) sound.stop();
-      });
-      sounds = [];
       if (beepSource) {
         beepSource.oscillator.stop();
         beepSource = null;
@@ -1065,16 +1056,12 @@
                 point.found = true;
                 foundCount++;
                 const soundElement = document.getElementById(`sound${index + 1}`);
-                soundElement.innerHTML = `<span class="status"></span>Sound ${index + 1}: Found`; // Preserve status span
+                soundElement.innerHTML = `<span class="status"></span>Sound ${index + 1}: Found`;
                 soundElement.querySelector('.status').classList.add('found');
                 updateMessage(`You found sound ${index + 1}`, 'success');
-                playSound(index, true);
+                playSound(index, true); // Start sound without stopping others
               } else if (distance < 30 && distance >= 5) {
                 playBeep(distance);
-              } else if (distance >= 30 && sounds[index]) {
-                sounds[index].stop();
-                sounds[index] = null;
-                updateDebugStatus(`Stopped Sound ${index + 1} (distance: ${distance.toFixed(2)}m)`);
               }
             }
           }
@@ -1194,10 +1181,10 @@
       soundToggleButton.classList.toggle('active', soundMuted);
 
       if (soundMuted) {
-        sounds.forEach(sound => {
-          if (sound) sound.stop();
+        sounds.forEach(targetSounds => {
+          targetSounds.forEach(sound => sound.stop());
         });
-        sounds = [];
+        sounds = [[], [], [], []];
         if (beepSource) {
           beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
           updateDebugStatus('Beep sound stopped');
