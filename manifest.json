@@ -1,5 +1,4 @@
 {
-  "$schema": "https://json.schemastore.org/web-manifest",
   "name": "Sound Hunt",
   "short_name": "SoundHunt",
   "description": "Explore and discover hidden sounds around you!",
@@ -9,11 +8,10 @@
   "orientation": "portrait-primary",
   "background_color": "#1a1a2e",
   "theme_color": "#00d4ff",
-  "categories": ["games", "entertainment", "music"],
+  "categories": ["music", "audio", "tools"],
   "lang": "en-US",
   "dir": "ltr",
   "icons": [
-   
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
@@ -30,25 +28,23 @@
       "src": "icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "maskable"
     },
     {
       "src": "icon-192-maskable.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
-    },
-
-  ],
-
-  "related_applications": [
-    {
-      "platform": "play",
-      "url": "https://play.google.com/store/apps/details?id=net.tokeno.soundhunt",
-      "id": "net.tokeno.soundhunt"
+      "purpose": "maskable"
     }
   ],
-  "prefer_related_applications": false,
+ 
+    {
+      "name": "Admin Panel",
+      "short_name": "Admin",
+      "description": "Access admin controls",
+      "url": "/admin.html"
+    }
+  ],
   "protocol_handlers": [
     {
       "protocol": "web+soundhunt",
@@ -70,20 +66,12 @@
       ]
     }
   ],
-  "share_target": {
-    "action": "/share",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "title": "name",
-      "text": "description",
-      "url": "link",
-      "files": [
-        {
-          "name": "sound",
-          "accept": ["audio/*"]
-        }
-      ]
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=net.tokeno.soundhunt",
+      "id": "net.tokeno.soundhunt"
     }
-  }
+  ],
+  "prefer_related_applications": false
 }
