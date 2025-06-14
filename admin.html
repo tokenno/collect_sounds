@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sound Hunt Admin</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      background-color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+    h1, h2 {
+      color: #333;
+    }
+    #loginForm, #adminControls {
+      margin: 20px auto;
+      max-width: 400px;
+    }
+    input[type="password"] {
+      padding: 10px;
+      font-size: 1.1em;
+      margin: 10px;
+      width: 200px;
+    }
+    button, a.main-link {
+      padding: 12px 24px;
+      margin: 5px;
+      font-size: 1.1em;
+      cursor: pointer;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      text-decoration: none;
+      display: inline-block;
+      touch-action: manipulation;
+    }
+    button:hover, a.main-link:hover {
+      background-color: #45a049;
+    }
+    button.active {
+      background-color: #d32f2f;
+    }
+    button.active:hover {
+      background-color: #b71c1c;
+    }
+    #gpsStatus, #statusWindow {
+      font-size: 1.2em;
+      margin: 20px 0;
+      color: #333;
+    }
+    #statusWindow.error {
+      color: #d32f2f;
+    }
+    #statusWindow.success {
+      color: #388e3c;
+    }
+    .manual {
+      margin: 20px 0;
+      width: 100%;
+      max-width: 300px;
+    }
+    .manual p {
+      margin: 5px 0;
+    }
+    .manual button {
+      margin: 0 5px;
+      padding: 8px 16px;
+    }
+    @media (max-width: 600px) {
+      button, a.main-link {
+        padding: 10px 20px;
+        font-size: 1em;
+      }
+      input[type="password"] {
+        font-size: 1em;
+        width: 180px;
+      }
+      .manual p {
+        font-size: 0.9em;
+      }
+      .manual button {
+        padding: 6px 12px;
+        font-size: 0.9em;
+      }
+      #gpsStatus, #statusWindow {
+        font-size: 1em;
+      }
+      h1 {
+        font-size: 1.5em;
+      }
+      h2 {
+        font-size: 1.2em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sound Hunt Admin</h1>
+  <div id="loginForm">
+    <h2>Admin Login</h2>
+    <input type="password" id="passwordInput" placeholder="Enter password">
+    <button id="loginBtn">Login</button>
+  </div>
+  <div id="adminControls" style="display: none;">
+    <h2>Admin Controls</h2>
+    <a href="index.html" class="main-link">Return to Main App</a>
+    <div id="gpsStatus">Waiting for GPS...</div>
+    <div id="statusWindow"></div>
+    <div class="manual">
+      <h2>Set Hidden Coordinates</h2>
+      <button id="clearPoints">Clear All Points</button>
+      <div id="manualControls">
+        <p id="point1">Point 1: <button class="setGps" data-point="1">Set GPS</button></p>
+        <p id="point2">Point 2: <button class="setGps" data-point="2">Set GPS</button></p>
+        <p id="point3">Point 3: <button class="setGps" data-point="3">Set GPS</button></p>
+        <p id="point4">Point 4: <button class="setGps" data-point="4">Set GPS</button></p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ADMIN_PASSWORD = "admin123"; // Hardcoded for simplicity; use secure authentication in production
+    let currentPosition = null;
+    let targetPoints = [
+      { lat: null, lng: null, set: false },
+      { lat: null, lng: null, set: false },
+      { lat: null, lng: null, set: false },
+      { lat: null, lng: null, set: false }
+    ];
+
+    // Update status window
+    function updateStatus(message, type = 'normal') {
+      const statusWindow = document.getElementById('statusWindow');
+      statusWindow.textContent = message;
+      statusWindow.className = type; // 'normal', 'error', or 'success'
+      setTimeout(() => {
+        statusWindow.textContent = '';
+        statusWindow.className = '';
+      }, 5000); // Clear after 5 seconds
+      console.log('Status:', message, type);
+    }
+
+    // Load existing coordinates
+    function loadCoordinates() {
+      const storedPoints = localStorage.getItem('targetPoints');
+      if (storedPoints) {
+        targetPoints = JSON.parse(storedPoints);
+        targetPoints.forEach((point, index) => {
+          if (point.set) {
+            document.getElementById(`point${index + 1}`).textContent = `Point ${index + 1}: Lat ${point.lat.toFixed(4)}, Lng ${point.lng.toFixed(4)}`;
+            document.querySelector(`.setGps[data-point="${index + 1}"]`).classList.add('active');
+          } else {
+            document.getElementById(`point${index + 1}`).innerHTML = `Point ${index + 1}: <button class="setGps" data-point="${index + 1}">Set GPS</button>`;
+          }
+        });
+      } else {
+        for (let i = 1; i <= 4; i++) {
+          document.getElementById(`point${i}`).innerHTML = `Point ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
+        }
+      }
+      updateStatus('Coordinates loaded or ready to set.', 'success');
+      // Reattach event listeners after DOM update
+      document.querySelectorAll('.setGps').forEach(button => {
+        button.addEventListener('click', setGpsHandler);
+      });
+    }
+
+    // Save coordinates to localStorage
+    function saveCoordinates() {
+      localStorage.setItem('targetPoints', JSON.stringify(targetPoints));
+    }
+
+    // Clear all points
+    function clearPoints() {
+      targetPoints = [
+        { lat: null, lng: null, set: false },
+        { lat: null, lng: null, set: false },
+        { lat: null, lng: null, set: false },
+        { lat: null, lng: null, set: false }
+      ];
+      localStorage.removeItem('targetPoints');
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`point${i}`).innerHTML = `Point ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
+        document.querySelector(`.setGps[data-point="${i}"]`).classList.remove('active');
+      }
+      updateStatus('All points cleared.', 'success');
+      // Reattach event listeners after DOM update
+      document.querySelectorAll('.setGps').forEach(button => {
+        button.addEventListener('click', setGpsHandler);
+      });
+    }
+
+    // Update GPS status
+    function updatePosition(position) {
+      currentPosition = position.coords;
+      document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+      updateStatus('GPS position updated.');
+    }
+
+    // Handle GPS errors
+    function handleError(error) {
+      document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
+      updateStatus(`GPS Error: ${error.message}`, 'error');
+    }
+
+    // Set GPS points handler
+    function setGpsHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+      console.log(`Set GPS clicked for point ${pointIndex + 1}, currentPosition: ${!!currentPosition}`);
+      if (!currentPosition) {
+        updateStatus(`Cannot set Point ${pointIndex + 1}: GPS unavailable.`, 'error');
+        return;
+      }
+      targetPoints[pointIndex].lat = currentPosition.latitude;
+      targetPoints[pointIndex].lng = currentPosition.longitude;
+      targetPoints[pointIndex].set = true;
+      document.getElementById(`point${pointIndex + 1}`).textContent = `Point ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)}`;
+      button.classList.add('active');
+      saveCoordinates();
+      updateStatus(`Point ${pointIndex + 1} set successfully.`, 'success');
+    }
+
+    // Login handler
+    document.getElementById('loginBtn').addEventListener('click', () => {
+      const password = document.getElementById('passwordInput').value;
+      if (password === ADMIN_PASSWORD) {
+        document.getElementById('loginForm').style.display = 'none';
+        document.getElementById('adminControls').style.display = 'block';
+        navigator.geolocation.watchPosition(updatePosition, handleError, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+        updateStatus('Logged in successfully.', 'success');
+      } else {
+        updateStatus('Incorrect password.', 'error');
+      }
+    });
+
+    // Clear points button
+    document.getElementById('clearPoints').addEventListener('click', clearPoints);
+
+    // Set GPS points
+    document.querySelectorAll('.setGps').forEach(button => {
+      button.addEventListener('click', setGpsHandler);
+    });
+
+    // Initialize
+    loadCoordinates();
+  </script>
+</body>
+</html>

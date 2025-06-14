@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest",
+  "name": "Sound Hunt",
+  "short_name": "SoundHunt",
+  "description": "Explore and discover hidden sounds around you!",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1a1a2e",
+  "theme_color": "#00d4ff",
+  "categories": ["games", "entertainment", "music"],
+  "lang": "en-US",
+  "dir": "ltr",
+  "icons": [
+   
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+
+  ],
+
+  "related_applications": [
+    {
+      "platform": "play",
+      "url": "https://play.google.com/store/apps/details?id=net.tokeno.soundhunt",
+      "id": "net.tokeno.soundhunt"
+    }
+  ],
+  "prefer_related_applications": false,
+  "protocol_handlers": [
+    {
+      "protocol": "web+soundhunt",
+      "url": "/?sound=%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/import-sound",
+      "accept": {
+        "audio/*": [".mp3", ".wav", ".ogg"]
+      },
+      "icons": [
+        {
+          "src": "icons/file-icon-64x64.png",
+          "sizes": "64x64",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "name",
+      "text": "description",
+      "url": "link",
+      "files": [
+        {
+          "name": "sound",
+          "accept": ["audio/*"]
+        }
+      ]
+    }
+  }
+}

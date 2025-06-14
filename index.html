@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Add these to your HTML head section -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#00d4ff">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta charset="UTF-8">
+
+  <title>Sound Hunt</title>
+  <style>
+    body {
+      font-family: 'Roboto', Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+    h1, h2 {
+      color: #00d4ff;
+      text-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+      margin: 5px 0;
+      text-align: center;
+    }
+    h1 {
+      font-size: 2em;
+    }
+    h2 {
+      font-size: 1em;
+    }
+    #gpsStatus, #message, #debugStatus {
+      font-size: 0.9em;
+      margin: 5px 0;
+      padding: 5px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      text-align: center;
+      width: 90%;
+      max-width: 350px;
+    }
+    #targetDistance {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 10px 0;
+      padding: 10px;
+      background: rgba(0, 212, 255, 0.2);
+      border-radius: 8px;
+      text-align: center;
+      width: 90%;
+      max-width: 350px;
+      box-shadow: 0 2px 6px rgba(0, 212, 255, 0.3);
+    }
+    #message.success {
+      color: #00e676;
+    }
+    #message.error {
+      color: #ff1744;
+    }
+    #message.warning {
+      color: #ffca28;
+    }
+    button, a.footer-link {
+      margin: 3px;
+      font-size: 0.9em;
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      transition: transform 0.2s, background 0.3s;
+      box-shadow: 0 2px 6px rgba(0, 212, 255, 0.3);
+      touch-action: manipulation;
+      text-decoration: none;
+      display: inline-block;
+    }
+    button:hover, a.footer-link:hover {
+      transform: scale(1.05);
+    }
+    button.active:hover {
+      transform: scale(1.05);
+    }
+    .start-tracking {
+      padding: 15px 30px;
+      font-size: 1.2em;
+      background: #00ff88;
+      color: #0f0f0f;
+      border: 2px solid #00cc70;
+      box-shadow: 0 4px 10px rgba(0, 255, 136, 0.5);
+    }
+    .start-tracking:hover {
+      background: #00cc70;
+    }
+    .start-tracking.active {
+      background: #ff1744;
+      box-shadow: 0 4px 10px rgba(255, 23, 68, 0.5);
+      border-color: #cc0022;
+    }
+    .start-tracking.active:hover {
+      background: #d81b60;
+    }
+    button:not(.start-tracking), a.footer-link {
+      padding: 8px 16px;
+      background: #00d4ff;
+      color: #0f0f0f;
+    }
+    button:not(.start-tracking):hover, a.footer-link:hover {
+      background: #00b0ff;
+    }
+    button:not(.start-tracking).active {
+      background: #ff1744;
+      box-shadow: 0 2px 6px rgba(255, 23, 68, 0.3);
+    }
+    button:not(.start-tracking).active:hover {
+      background: #d81b60;
+    }
+    button.record-btn.active {
+      background: #ffca28; /* Yellow when recording */
+    }
+    button.delete-btn {
+      padding: 6px 10px;
+      background: #ff1744;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
+    button.delete-btn:hover {
+      background: #d81b60;
+    }
+    .centered-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      max-width: 350px;
+      margin: 10px 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 350px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: center;
+    }
+    .card, .mixer {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      transition: transform 0.2s;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      min-height: 150px;
+      width: 100%;
+      max-width: 350px;
+    }
+    .card:hover, .mixer:hover {
+      transform: translateY(-2px);
+    }
+    .compass-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 5px;
+      width: 100%;
+      max-width: 350px;
+    }
+    .controls, .target-card, .targets, .collected, .manual {
+      gap: 5px;
+      width: 100%;
+      margin-top: 0;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .targets {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .collected p {
+      margin: 2px 0;
+      font-size: 0.9em;
+    }
+    .collected .status {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      border-radius: 50%;
+      background-color: #ff1744; /* Red for not found */
+    }
+    .collected .status.found {
+      background-color: #00e676;
+    }
+    .manual p {
+      margin: 3px 0;
+      color: #b0bec5;
+      font-size: 0.9em;
+    }
+    .manual button {
+      margin: 0 5px;
+      padding: 6px 12px;
+    }
+    .manual input[type="file"] {
+      font-size: 0.8em;
+      color: #e0e0e0;
+      margin: 5px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      padding: 5px;
+      border-radius: 4px;
+    }
+    #compass {
+      border: 2px solid #00d4ff;
+      border-radius: 50%;
+      background: #0f0f0f;
+      border-color: #00ff88;
+      box-shadow: 0 0 10px rgba(0, 191, 255, 0.6);
+      width: 120px;
+      height: 120px;
+    }
+    #fallbackArrow {
+      display: none;
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-bottom: 8px solid #ff0000;
+      transform-origin: center bottom;
+    }
+    .mixer {
+      align-items: center;
+      gap: 0px;
+    }
+    .mixer h2 {
+      margin: 0 0 5px;
+    }
+    .mixer label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 3px 0;
+      font-size: 0.9em;
+      color: #80d4ff;
+    }
+    .mixer input[type="range"] {
+      width: 100%;
+      max-width: 150px;
+      accent-color: #00d4ff;
+    }
+    .footer {
+      padding: 10px 0;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      width: 100%;
+      background-color: rgba(0,0,0,0.1);
+    }
+    @media (max-width: 600px) {
+      .container {
+        display: flex;
+        flex-direction: column;
+        width: 90%;
+        max-width: 350px;
+        padding: 10px;
+        gap: 10px;
+        align-items: center;
+      }
+      .compass-container, .targets, .mixer, .controls, .collected, .manual {
+        width: 100%;
+        max-width: 350px;
+        padding: 5px;
+      }
+      .mixer h2 {
+        font-size: 0.8em;
+      }
+      .mixer label {
+        font-size: 0.7em;
+      }
+      .mixer input[type="range"] {
+        max-width: 80px;
+      }
+      .card {
+        min-height: 100px;
+        padding: 5px;
+      }
+      .controls, .targets, .collected, .manual {
+        gap: 0px;
+      }
+      h1 {
+        font-size: 1.5em;
+      }
+      h2 {
+        font-size: 0.8em;
+      }
+      .start-tracking {
+        padding: 12px 24px;
+        font-size: 1em;
+      }
+      button:not(.start-tracking), a.footer-link {
+        padding: 6px 12px;
+        font-size: 0.7em;
+      }
+      .manual p {
+        font-size: 0.7em;
+      }
+      .manual button {
+        padding: 4px 8px;
+        font-size: 0.7em;
+      }
+      .manual input[type="file"] {
+        font-size: 0.7em;
+        padding: 3px;
+      }
+      #gpsStatus, #message, #debugStatus {
+        font-size: 0.8em;
+      }
+      #targetDistance {
+        font-size: 1.0em;
+      }
+      #compass {
+        width: 60px;
+        height: 60px;
+      }
+      #fallbackArrow {
+        border-left: 3px solid transparent;
+        border-right: 3px solid transparent;
+        border-bottom: 6px solid #ff4444;
+      }
+      button.delete-btn {
+        padding: 3px 6px;
+        font-size: 0.6em;
+      }
+      .collected .status {
+        width: 8px;
+        height: 8px;
+      }
+      .collected-items p {
+        font-size: 0.7em;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Sound Hunt</h1>
+  <p id="description">Explore and discover hidden sounds around you!</p>
+  <div id="gpsStatus">Waiting for GPS...</div>
+  <div id="message"></div>
+  <div id="debugStatus"></div>
+  <div id="targetDistance"></div>
+
+  <div class="centered-section">
+    <button id="startTracking" class="start-tracking">Track</button>
+  </div>
+
+  <div class="container">
+    <div class="compass-container">
+      <canvas id="compassCanvas" width="120" height="120"></canvas>
+      <div id="fallbackArrow"></div>
+    </div>
+
+    <div class="card targets">
+      <h2>Select Target</h2>
+      <button class="targetBtn" data-target="1">Target 1</button>
+      <button class="targetBtn" data-target="2">Target 2</button>
+      <button class="targetBtn" data-target="3">Target 3</button>
+      <button class="targetBtn" data-target="4">Target 4</button>
+    </div>
+
+    <div class="mixer card">
+      <h2>Mixer</h2>
+      <label>Sound 1: <input type="range" id="volume1" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 2: <input type="range" id="volume2" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 3: <input type="range" id="volume3" min="0" max="1" step="0.01" value="1"></label>
+      <label>Sound 4: <input type="range" id="volume4" min="0" max="1" step="0.01" value="1"></label>
+    </div>
+
+    <div class="card controls">
+      <h2>Controls</h2>
+      <button id="enableCompass">Enable Compass</button>
+      <button id="resetAll">Reset</button>
+      <button id="soundToggle">Sound Off</button>
+    </div>
+
+    <div class="card collected">
+      <h2>Collected Sounds</h2>
+      <p id="sound1"><span class="status"></span>Sound 1: Not found</p>
+      <p id="sound2"><span class="status"></span>Sound 2: Not found</p>
+      <p id="sound3"><span class="status"></span>Sound 3: Not found</p>
+      <p id="sound4"><span class="status"></span>Sound 4: Not found</p>
+    </div>
+
+    <div class="card manual">
+      <h2>Manual Mode</h2>
+      <button id="toggleManual" title="Enable to set your own points and sounds">Toggle Manual</button>
+      <div id="manualControls" style="display: none;">
+        <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button>
+          <input type="file" class="loadSound" data-point="1" accept="audio/*">
+          <button class="record-btn" data-point="1">Record Sound</button>
+          <button class="delete-btn" data-point="1" style="display: none;">Delete Sound</button>
+        </p>
+        <p id="manual2">Manual 2: <button class="setGps" data-point="2">Set GPS</button>
+          <input type="file" class="loadSound" data-point="2" accept="audio/*">
+          <button class="record-btn" data-point="2">Record Sound</button>
+          <button class="delete-btn" data-point="2" style="display: none;">Delete Sound</button>
+        </p>
+        <p id="manual3">Manual 3: <button class="setGps" data-point="3">Set GPS</button>
+          <input type="file" class="loadSound" data-point="3" accept="audio/*">
+          <button class="record-btn" data-point="3">Record Sound</button>
+          <button class="delete-btn" data-point="3" style="display: none;">Delete Sound</button>
+        </p>
+        <p id="manual4">Manual 4: <button class="setGps" data-point="4">Set GPS</button>
+          <input type="file" class="loadSound" data-point="4" accept="audio/*">
+          <button class="record-btn" data-point="4">Record Sound</button>
+          <button class="delete-btn" data-point="4" style="display: none;">Delete Sound</button>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="admin.html" class="footer-link">Admin</a>
+    <a href="http://tokeno.net" class="footer-link">Tokeno.net</a>
+    <a href="help.html" class="footer-link">Help</a>
+  </div>
+
+  <script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let isTracking = false;
+    let isCompassEnabled = false;
+    let manualMode = false;
+    let soundMuted = false;
+    let audioContextResumed = false;
+    let gainNodesInitialized = false;
+    let currentPosition = null;
+    let targetPoints = [
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false }
+    ];
+    let selectedTarget = null;
+    let audioBuffers = [null, null, null, null];
+    let customBuffers = [null, null, null, null];
+    let sounds = [[], [], [], []];
+    let gainNodes = [];
+    let beepSource = null;
+    let lastBeepTime = 0;
+    let foundCount = 0;
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+    let watchId = null;
+
+    const DB_NAME = 'SoundHuntDB';
+    const STORE_NAME = 'recordings';
+    let db;
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, 1);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        };
+      });
+    }
+
+    function saveCustomSound(index, blob) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const record = { id: `customSound${index}`, blob: blob };
+        const request = store.put(record);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function loadCustomSounds() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readonly');
+        const store = transaction.objectStore(STORE_NAME);
+        const requests = [];
+        for (let i = 0; i < 4; i++) {
+          requests.push(new Promise((res) => {
+            const request = store.get(`customSound${i}`);
+            request.onsuccess = () => {
+              if (request.result) {
+                targetPoints[i].hasCustomSound = true;
+                updateDebugStatus(`Custom sound found for Target ${i + 1}`);
+                res(request.result.blob);
+              } else {
+                targetPoints[i].hasCustomSound = false;
+                updateDebugStatus(`No custom sound for Target ${i + 1}`);
+                res(null);
+              }
+            };
+            request.onerror = () => reject(request.error);
+          }));
+        }
+        Promise.all(requests).then(sounds => resolve(sounds));
+      });
+    }
+
+    function deleteCustomSound(index) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.delete(`customSound${index}`);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function clearCustomSounds() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction([STORE_NAME], 'readwrite');
+        const store = transaction.objectStore(STORE_NAME);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function updateDebugStatus(message) {
+      const debugStatus = document.getElementById('debugStatus');
+      debugStatus.textContent = message || 'Debug: Ready';
+      console.log('Debug:', message);
+    }
+
+    function updateMessage(message, type = 'normal') {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = message;
+      messageDiv.className = type;
+      setTimeout(() => {
+        messageDiv.textContent = '';
+        messageDiv.className = '';
+      }, 3000);
+      console.log('Message:', message, type);
+    }
+
+    function updateTargetDistance() {
+      if (!currentPosition || !selectedTarget || !targetPoints[selectedTarget - 1].set) {
+        document.getElementById('targetDistance').textContent = '';
+        return;
+      }
+      const target = targetPoints[selectedTarget - 1];
+      const distance = getDistance(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng).toFixed(2);
+      document.getElementById('targetDistance').textContent = `Distance to Target ${selectedTarget}: ${distance} meters`;
+    }
+
+    function loadAdminCoordinates() {
+      if (manualMode) return;
+      const storedPoints = localStorage.getItem('targetPoints');
+      if (storedPoints) {
+        const parsedPoints = JSON.parse(storedPoints);
+        targetPoints = parsedPoints.map((point, index) => ({
+          ...point,
+          sound: null,
+          found: false,
+          discoveryEligible: true,
+          hasCustomSound: targetPoints[index]?.hasCustomSound || false,
+          lat: targetPoints[index]?.hasCustomSound ? targetPoints[index].lat : point.lat,
+          lng: targetPoints[index]?.hasCustomSound ? targetPoints[index].lng : point.lng,
+          set: targetPoints[index]?.hasCustomSound ? true : point.set
+        }));
+        targetPoints.forEach((point, index) => {
+          if (point.lat && point.lng) {
+            document.getElementById(`manual${index + 1}`).textContent = `Point ${index + 1}: Hidden`;
+          }
+        });
+      }
+      updateDebugStatus(`Admin coordinates loaded: ${storedPoints ? 'Yes' : 'No'}`);
+    }
+
+    function initializeGainNodes() {
+      try {
+        if (gainNodesInitialized) {
+          updateDebugStatus('Gain nodes already initialized, skipping.');
+          return;
+        }
+        updateDebugStatus('Starting gain nodes initialization...');
+        gainNodes = [];
+        for (let i = 0; i < 4; i++) {
+          const gainNode = audioCtx.createGain();
+          gainNode.gain.setValueAtTime(1, audioCtx.currentTime);
+          gainNode.connect(audioCtx.destination);
+          gainNodes.push(gainNode);
+          updateDebugStatus(`Gain node ${i + 1} created and connected.`);
+        }
+        gainNodesInitialized = true;
+        updateDebugStatus('Gain nodes successfully initialized.');
+      } catch (error) {
+        gainNodesInitialized = false;
+        updateDebugStatus(`Error initializing gain nodes: ${error.message}`);
+        updateMessage('Audio setup failed, please reload the page.', 'error');
+      }
+    }
+
+    async function preloadAudioFiles() {
+      const audioFiles = ['sound1.wav', 'sound2.wav', 'sound3.wav', 'sound4.wav'];
+      for (let i = 0; i < audioFiles.length; i++) {
+        try {
+          const response = await fetch(audioFiles[i]);
+          if (!response.ok) throw new Error(`Failed to fetch ${audioFiles[i]}`);
+          const arrayBuffer = await response.arrayBuffer();
+          audioBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
+          updateDebugStatus(`Preloaded ${audioFiles[i]}`);
+        } catch (error) {
+          updateMessage(`Failed to load ${audioFiles[i]}: ${error.message}`, 'error');
+          updateDebugStatus(`Audio preload error for ${audioFiles[i]}: ${error.message}`);
+        }
+      }
+    }
+
+    async function decodeCustomSounds() {
+      try {
+        const sounds = await loadCustomSounds();
+        for (let i = 0; i < sounds.length; i++) {
+          if (sounds[i]) {
+            const arrayBuffer = await sounds[i].arrayBuffer();
+            customBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
+            updateDebugStatus(`Decoded custom sound for Target ${i + 1}`);
+          } else {
+            customBuffers[i] = null;
+          }
+        }
+      } catch (error) {
+        updateDebugStatus(`Error decoding custom sounds: ${error.message}`);
+      }
+    }
+
+    function updateManualUI() {
+      for (let i = 0; i < 4; i++) {
+        const pointIndex = i;
+        const deleteButton = document.querySelector(`.delete-btn[data-point="${pointIndex + 1}"]`);
+        deleteButton.style.display = targetPoints[pointIndex].hasCustomSound ? 'inline-block' : 'none';
+        let html = `Manual ${pointIndex + 1}: `;
+        if (targetPoints[pointIndex].set) {
+          html += `Lat ${targetPoints[pointIndex].lat.toFixed(4)}, Lng ${targetPoints[pointIndex].lng.toFixed(4)} `;
+        } else {
+          html += `<button class="setGps" data-point="${pointIndex + 1}">Set GPS</button> `;
+        }
+        html += `<input type="file" class="loadSound" data-point="${pointIndex + 1}" accept="audio/*"> `;
+        html += `<button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button> `;
+        html += `<button class="delete-btn" data-point="${pointIndex + 1}" style="display: ${targetPoints[pointIndex].hasCustomSound ? 'inline-block' : 'none'};">Delete Sound</button>`;
+        document.getElementById(`manual${pointIndex + 1}`).innerHTML = html;
+      }
+      document.querySelectorAll('.setGps').forEach(button => {
+        button.addEventListener('click', setGpsHandler);
+      });
+      document.querySelectorAll('.loadSound').forEach(input => {
+        input.addEventListener('change', loadSoundHandler);
+      });
+      document.querySelectorAll('.record-btn').forEach(btn => {
+        btn.addEventListener('click', recordSoundHandler);
+      });
+      document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', deleteSoundHandler);
+      });
+    }
+
+    async function playSound(index, loop = false) {
+      if (soundMuted) {
+        updateDebugStatus(`Sound muted, skipping playback for Sound ${index + 1}`);
+        return;
+      }
+
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+          audioContextResumed = true;
+          updateDebugStatus(`AudioContext resumed for playSound, state: ${audioCtx.state}`);
+        } catch (error) {
+          updateDebugStatus(`Failed to resume AudioContext: ${error.message}`);
+          updateMessage('Failed to enable audio playback', 'error');
+          return;
+        }
+      }
+
+      if (!gainNodesInitialized || !gainNodes[index]) {
+        updateDebugStatus(`Gain nodes not initialized for Sound ${index + 1}`);
+        updateMessage('Audio setup incomplete, please try again', 'error');
+        return;
+      }
+
+      let bufferToPlay = null;
+
+      if (targetPoints[index].hasCustomSound && customBuffers[index]) {
+        bufferToPlay = customBuffers[index];
+        updateDebugStatus(`Using custom sound for Target ${index + 1}`);
+      } else if (audioBuffers[index]) {
+        bufferToPlay = audioBuffers[index];
+        updateDebugStatus(`Using default sound for Target ${index + 1}`);
+      } else {
+        updateMessage(`Audio not loaded for Sound ${index + 1}`, 'warning');
+        return;
+      }
+
+      const source = audioCtx.createBufferSource();
+      source.buffer = bufferToPlay;
+      source.loop = loop;
+      source.connect(gainNodes[index]);
+      source.start();
+
+      sounds[index].push(source);
+
+      if (!loop) {
+        source.onended = () => {
+          const soundIndex = sounds[index].indexOf(source);
+          if (soundIndex > -1) sounds[index].splice(soundIndex, 1);
+          updateDebugStatus(`Sound ${index + 1} finished playing once`);
+        };
+      } else {
+        updateDebugStatus(`Playing Sound ${index + 1} in loop`);
+      }
+    }
+
+    function createBeep() {
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.type = 'square';
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      return { oscillator, gainNode };
+    }
+
+    async function playBeep(distance) {
+      if (soundMuted) {
+        updateDebugStatus(`Sound muted, skipping beep at distance ${distance.toFixed(2)}m`);
+        return;
+      }
+
+      if (audioCtx.state === 'suspended') {
+        try {
+          await audioCtx.resume();
+          updateDebugStatus(`AudioContext resumed for beep, state: ${audioCtx.state}`);
+        } catch (error) {
+          updateDebugStatus(`Failed to resume AudioContext for beep: ${error.message}`);
+          return;
+        }
+      }
+
+      if (!gainNodesInitialized) {
+        updateDebugStatus(`Gain nodes not initialized, skipping beep`);
+        return;
+      }
+
+      const now = Date.now();
+      let interval = 1000;
+      if (distance <= 30 && distance > 3) {
+        interval = Math.max(100, 1000 - 21.15 * (30 - distance));
+      } else if (distance <= 3) {
+        interval = 429;
+      }
+      if (now - lastBeepTime < interval) return;
+      lastBeepTime = now;
+
+      if (!beepSource) {
+        beepSource = createBeep();
+        beepSource.oscillator.start();
+      }
+      beepSource.gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      setTimeout(() => {
+        beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      }, 100);
+      updateDebugStatus(`Beep played, distance: ${distance.toFixed(2)}m, interval: ${interval}ms`);
+    }
+
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371e3;
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δφ = (lat2 - lat1) * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function getBearing(lat1, lon1, lat2, lon2) {
+      const φ1 = lat1 * Math.PI / 180;
+      const φ2 = lat2 * Math.PI / 180;
+      const Δλ = (lon2 - lon1) * Math.PI / 180;
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) -
+                Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+      const θ = Math.atan2(y, x);
+      return (θ * 180 / Math.PI + 360) % 360;
+    }
+
+    function updateCompass() {
+      const canvas = document.getElementById('compassCanvas');
+      const ctx = canvas.getContext('2d');
+      const fallbackArrow = document.getElementById('fallbackArrow');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!isCompassEnabled) {
+        updateDebugStatus('Compass disabled.');
+        return;
+      }
+      if (!selectedTarget) {
+        updateDebugStatus('No target selected.');
+        return;
+      }
+      if (!targetPoints[selectedTarget - 1]?.set) {
+        updateDebugStatus(`Target ${selectedTarget} not set.`);
+        return;
+      }
+      if (!currentPosition) {
+        updateDebugStatus('No GPS position.');
+        return;
+      }
+
+      const target = targetPoints[selectedTarget - 1];
+      const bearing = getBearing(currentPosition.latitude, currentPosition.longitude, target.lat, target.lng);
+      updateDebugStatus(`Drawing arrow for Target ${selectedTarget}: ${bearing.toFixed(2)}°`);
+
+      const radius = canvas.width / 2 - 10;
+      ctx.beginPath();
+      ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, 2 * Math.PI);
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(bearing * Math.PI / 180);
+      ctx.beginPath();
+      ctx.moveTo(0, -radius * 0.7);
+      ctx.lineTo(radius * 0.25, radius * 0.5);
+      ctx.lineTo(0, radius * 0.1);
+      ctx.lineTo(-radius * 0.25, radius * 0.5);
+      ctx.closePath();
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.restore();
+
+      fallbackArrow.style.display = 'none';
+      if (isCompassEnabled) requestAnimationFrame(updateCompass);
+    }
+
+    async function resetAll(isAutomatic = false) {
+      isTracking = false;
+      isCompassEnabled = false;
+      manualMode = false;
+      soundMuted = false;
+      audioContextResumed = false;
+      gainNodesInitialized = false;
+      gainNodes = [];
+      document.getElementById('soundToggle').textContent = 'Sound Off';
+      document.getElementById('soundToggle').classList.remove('active');
+      selectedTarget = null;
+      foundCount = 0;
+
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+      }
+
+      if (isAutomatic) {
+        targetPoints = targetPoints.map(point => ({
+          lat: point.lat,
+          lng: point.lng,
+          set: point.set,
+          sound: null,
+          found: false,
+          discoveryEligible: true,
+          hasCustomSound: point.hasCustomSound
+        }));
+      } else {
+        targetPoints = [
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false }
+        ];
+        customBuffers = [null, null, null, null];
+        try {
+          await clearCustomSounds();
+          updateDebugStatus('All custom sounds cleared from storage');
+        } catch (error) {
+          updateDebugStatus(`Error clearing custom sounds: ${error.message}`);
+        }
+      }
+
+      sounds.forEach(targetSounds => {
+        targetSounds.forEach(sound => {
+          try {
+            sound.stop();
+          } catch (e) {
+            updateDebugStatus(`Error stopping sound: ${e.message}`);
+          }
+        });
+      });
+      sounds = [[], [], [], []];
+
+      document.getElementById('startTracking').textContent = 'Track';
+      document.getElementById('startTracking').classList.remove('active');
+      document.getElementById('enableCompass').textContent = 'Enable Compass';
+      document.getElementById('enableCompass').classList.remove('active');
+      document.getElementById('toggleManual').textContent = 'Toggle Manual';
+      document.getElementById('toggleManual').classList.remove('active');
+      document.getElementById('manualControls').style.display = 'none';
+      document.getElementById('compassCanvas').getContext('2d').clearRect(0, 0, 120, 120);
+      updateMessage('Tap "Track" to enable audio playback');
+      updateDebugStatus('');
+      document.getElementById('fallbackArrow').style.display = 'none';
+      document.getElementById('targetDistance').textContent = '';
+      document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.setGps').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('input[type="range"]').forEach(slider => slider.value = 1);
+      document.getElementById('gpsStatus').textContent = 'Waiting for GPS...';
+      for (let i = 1; i <= 4; i++) {
+        const soundElement = document.getElementById(`sound${i}`);
+        soundElement.innerHTML = `<span class="status"></span>Sound ${i}: Not found`;
+        soundElement.querySelector('.status').classList.remove('found');
+      }
+      if (beepSource) {
+        try {
+          beepSource.oscillator.stop();
+        } catch (e) {
+          updateDebugStatus(`Error stopping beep source: ${e.message}`);
+        }
+        beepSource = null;
+      }
+      if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+        isRecording = false;
+        document.querySelectorAll('.record-btn').forEach(btn => {
+          btn.classList.remove('active');
+          btn.textContent = 'Record Sound';
+        });
+      }
+      initializeGainNodes();
+      loadAdminCoordinates();
+      updateManualUI();
+    }
+
+    function setGpsHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+      updateDebugStatus(`Set GPS clicked for point ${pointIndex + 1}, manualMode: ${manualMode}, currentPosition: ${!!currentPosition}`);
+      if (!manualMode) {
+        updateMessage(`Cannot set Target ${pointIndex + 1}: Manual mode is disabled`, 'error');
+        return;
+      }
+      if (!currentPosition) {
+        updateMessage(`Cannot set Target ${pointIndex + 1}: GPS unavailable`, 'error');
+        return;
+      }
+      targetPoints[pointIndex].lat = currentPosition.latitude;
+      targetPoints[pointIndex].lng = currentPosition.longitude;
+      targetPoints[pointIndex].set = true;
+      targetPoints[pointIndex].discoveryEligible = false;
+      updateManualUI();
+      updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
+      button.classList.add('active');
+      playSound(pointIndex, false);
+    }
+
+    async function loadSoundHandler(event) {
+      const input = event.target;
+      const pointIndex = parseInt(input.dataset.point) - 1;
+      const file = input.files[0];
+      if (!file) {
+        updateDebugStatus(`No file selected for Target ${pointIndex + 1}`);
+        return;
+      }
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        customBuffers[pointIndex] = await audioCtx.decodeAudioData(arrayBuffer);
+        targetPoints[pointIndex].hasCustomSound = true;
+        await saveCustomSound(pointIndex, file);
+        updateManualUI();
+        updateMessage(`Sound loaded for Target ${pointIndex + 1}`, 'success');
+        updateDebugStatus(`Sound file loaded and decoded for Target ${pointIndex + 1}`);
+        await playSound(pointIndex, false);
+      } catch (error) {
+        updateDebugStatus(`Error loading sound for Target ${pointIndex + 1}: ${error.message}`);
+        updateMessage(`Error loading sound: ${error.message}`, 'error');
+      }
+    }
+
+    async function recordSoundHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+
+      if (!isRecording) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          recordedChunks = [];
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              recordedChunks.push(e.data);
+              updateDebugStatus(`Recorded data available for Target ${pointIndex + 1}, size: ${e.data.size}`);
+            }
+          };
+          mediaRecorder.onstop = async () => {
+            if (recordedChunks.length === 0) {
+              updateDebugStatus(`No data recorded for Target ${pointIndex + 1}`);
+              updateMessage(`No audio recorded for Target ${pointIndex + 1}`, 'error');
+              stream.getTracks().forEach(track => track.stop());
+              return;
+            }
+            const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+            try {
+              await saveCustomSound(pointIndex, blob);
+              const arrayBuffer = await blob.arrayBuffer();
+              customBuffers[pointIndex] = await audioCtx.decodeAudioData(arrayBuffer);
+              targetPoints[pointIndex].hasCustomSound = true;
+              updateManualUI();
+              updateMessage(`Recording saved for Target ${pointIndex + 1}`, 'success');
+              updateDebugStatus(`Recording saved for Target ${pointIndex + 1}`);
+              await playSound(pointIndex, false);
+            } catch (error) {
+              updateDebugStatus(`Error saving recording for Target ${pointIndex + 1}: ${error.message}`);
+              updateMessage(`Error saving recording`, 'error');
+            }
+            stream.getTracks().forEach(track => track.stop());
+          };
+          mediaRecorder.start();
+          isRecording = true;
+          button.classList.add('active');
+          button.textContent = 'Stop Recording';
+          updateDebugStatus(`Started recording for Target ${pointIndex + 1}`);
+        } catch (error) {
+          updateMessage(`Failed to access microphone: ${error.message}`, 'error');
+          updateDebugStatus(`Microphone access error: ${error.message}`);
+        }
+      } else {
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+        }
+        isRecording = false;
+        button.classList.remove('active');
+        button.textContent = 'Record Sound';
+        updateDebugStatus(`Stopped recording for Target ${pointIndex + 1}`);
+      }
+    }
+
+    async function deleteSoundHandler(event) {
+      const button = event.target;
+      const pointIndex = parseInt(button.dataset.point) - 1;
+      try {
+        await deleteCustomSound(pointIndex);
+        targetPoints[pointIndex].hasCustomSound = false;
+        customBuffers[pointIndex] = null;
+        updateManualUI();
+        updateDebugStatus(`Custom sound deleted for Target ${pointIndex + 1}`);
+        updateMessage(`Custom sound deleted for Target ${pointIndex + 1}`, 'success');
+      } catch (error) {
+        updateDebugStatus(`Error deleting custom sound for Target ${pointIndex + 1}: ${error.message}`);
+        updateMessage(`Error deleting custom sound`, 'error');
+      }
+    }
+
+    function updatePosition(position) {
+      currentPosition = position.coords;
+      document.getElementById('gpsStatus').textContent = `Lat: ${currentPosition.latitude.toFixed(4)}, Lng: ${currentPosition.longitude.toFixed(4)}`;
+      updateTargetDistance();
+      if (isTracking) {
+        targetPoints.forEach((point, index) => {
+          if (point.set) {
+            const distance = getDistance(currentPosition.latitude, currentPosition.longitude, point.lat, point.lng);
+            if (distance > 5 && !point.discoveryEligible) {
+              point.discoveryEligible = true;
+              updateDebugStatus(`Target ${index + 1} is now discovery eligible (distance: ${distance.toFixed(2)}m)`);
+            }
+            if (point.discoveryEligible) {
+              if (distance < 5 && !point.found) {
+                point.found = true;
+                foundCount++;
+                const soundElement = document.getElementById(`sound${index + 1}`);
+                soundElement.innerHTML = `<span class="status found"></span>Sound ${index + 1}: Found`;
+                updateMessage(`You found sound ${index + 1}`, 'success');
+                playSound(index, true);
+              } else if (distance < 30 && distance >= 5) {
+                playBeep(distance);
+              }
+            }
+          }
+        });
+      }
+      if (isCompassEnabled) updateCompass();
+    }
+
+    function handleError(error) {
+      document.getElementById('gpsStatus').textContent = `GPS Error: ${error.message}`;
+      updateDebugStatus(`GPS Error: ${error.message}`);
+      updateMessage(`GPS unavailable: ${error.message}`, 'error');
+    }
+
+    function initializeGPS() {
+      navigator.geolocation.getCurrentPosition(
+        updatePosition,
+        handleError,
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    }
+
+    document.getElementById('startTracking').addEventListener('click', async () => {
+      isTracking = !isTracking;
+      document.getElementById('startTracking').textContent = isTracking ? 'Stop Tracking' : 'Track';
+      document.getElementById('startTracking').classList.toggle('active', isTracking);
+      if (isTracking) {
+        if (!audioContextResumed) {
+          try {
+            await audioCtx.resume();
+            audioContextResumed = true;
+            updateDebugStatus(`AudioContext resumed on Start Tracking, state: ${audioCtx.state}`);
+            updateMessage('Audio playback enabled', 'success');
+          } catch (error) {
+            updateDebugStatus(`Failed to resume AudioContext on Start Tracking: ${error.message}`);
+            updateMessage('Failed to enable audio playback', 'error');
+          }
+        }
+        watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        });
+      } else {
+        if (watchId) {
+          navigator.geolocation.clearWatch(watchId);
+          watchId = null;
+        }
+      }
+    });
+
+    document.getElementById('enableCompass').addEventListener('click', () => {
+      isCompassEnabled = !isCompassEnabled;
+      document.getElementById('enableCompass').textContent = isCompassEnabled ? 'Disable Compass' : 'Enable Compass';
+      document.getElementById('enableCompass').classList.toggle('active', isCompassEnabled);
+      if (isCompassEnabled) {
+        updateCompass();
+      } else {
+        const canvas = document.getElementById('compassCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        document.getElementById('fallbackArrow').style.display = 'none';
+        updateDebugStatus('Compass disabled.');
+      }
+    });
+
+    document.getElementById('toggleManual').addEventListener('click', () => {
+      manualMode = !manualMode;
+      document.getElementById('manualControls').style.display = manualMode ? 'block' : 'none';
+      document.getElementById('toggleManual').textContent = manualMode ? 'Disable & Reset' : 'Toggle Manual';
+      document.getElementById('toggleManual').classList.toggle('active', manualMode);
+      if (manualMode && localStorage.getItem('targetPoints')) {
+        updateMessage('Warning: Manual mode enabled, admin points ignored.', 'warning');
+        targetPoints = targetPoints.map(point => ({
+          lat: point.lat,
+          lng: point.lng,
+          set: point.set,
+          sound: null,
+          found: false,
+          discoveryEligible: true,
+          hasCustomSound: point.hasCustomSound
+        }));
+        updateManualUI();
+      } else if (!manualMode) {
+        loadAdminCoordinates();
+        updateManualUI();
+      }
+    });
+
+    document.querySelectorAll('.targetBtn').forEach(button => {
+      button.addEventListener('click', () => {
+        selectedTarget = parseInt(button.dataset.target);
+        document.querySelectorAll('.targetBtn').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        updateMessage(`Target ${selectedTarget} selected`, 'success');
+        updateTargetDistance();
+        updateCompass();
+      });
+    });
+
+    document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
+      slider.addEventListener('input', () => {
+        if (gainNodes[index]) {
+          gainNodes[index].gain.setValueAtTime(slider.value, audioCtx.currentTime);
+          updateDebugStatus(`Volume ${index + 1} set to ${slider.value}`);
+        } else {
+          updateDebugStatus(`Gain nodes not available, cannot adjust volume for Sound ${index + 1}`);
+        }
+      });
+    });
+
+    document.getElementById('soundToggle').addEventListener('click', async () => {
+      const soundToggleButton = document.getElementById('soundToggle');
+      soundMuted = !soundMuted;
+      soundToggleButton.textContent = soundMuted ? 'Sound On' : 'Sound Off';
+      soundToggleButton.classList.toggle('active', soundMuted);
+
+      if (soundMuted) {
+        sounds.forEach(targetSounds => {
+          targetSounds.forEach(sound => {
+            try {
+              sound.stop();
+            } catch (e) {
+              updateDebugStatus(`Error stopping sound: ${e.message}`);
+            }
+          });
+        });
+        sounds = [[], [], [], []];
+        if (beepSource) {
+          beepSource.gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+          updateDebugStatus('Beep sound stopped');
+        }
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+          mediaRecorder.stop();
+          isRecording = false;
+          document.querySelectorAll('.record-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.textContent = 'Record Sound';
+          });
+        }
+        updateDebugStatus('All sounds muted');
+      } else {
+        updateDebugStatus('Sounds unmuted');
+        if (isTracking) {
+          targetPoints.forEach((point, index) => {
+            if (point.set && point.found) {
+              const distance = getDistance(currentPosition.latitude, currentPosition.longitude, point.lat, point.lng);
+              if (distance < 30) {
+                playSound(index, true);
+              }
+            }
+          });
+        }
+      }
+    });
+
+    document.getElementById('resetAll').addEventListener('click', () => resetAll(false));
+
+    async function initialize() {
+      try {
+        initializeGainNodes();
+        if (!gainNodesInitialized) {
+          throw new Error('Gain nodes initialization failed during startup.');
+        }
+        await openDB();
+        await preloadAudioFiles();
+        await decodeCustomSounds();
+        await resetAll(true);
+        updateManualUI();
+        loadAdminCoordinates();
+        initializeGPS();
+        updateDebugStatus('App fully initialized');
+      } catch (error) {
+        updateDebugStatus(`Initialization error: ${error.message}`);
+        updateMessage('Failed to initialize app, please reload the page.', 'error');
+      }
+    }
+
+    initialize();
+      
+      <script>
+  // Register Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('ServiceWorker registration successful');
+        })
+        .catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+    });
+  }
+
+  // Handle install prompt
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    console.log('PWA install prompt available');
+    // You can show your own install button here if you want
+  });
+</script>
+  </script>
+</body>
+</html>
