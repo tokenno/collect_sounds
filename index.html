@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Sound Hunt</title>
-<style>
+  <style>
     body {
       font-family: 'Roboto', Arial, sans-serif;
       margin: 0;
@@ -175,18 +175,17 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
     }
     .targets {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
     }
     .collected p {
       margin: 2px 0;
       font-size: 0.9em;
-    
     }
     .collected .status {
       display: inline-block;
@@ -207,6 +206,15 @@
     .manual button {
       margin: 0 5px;
       padding: 6px 12px;
+    }
+    .manual input[type="file"] {
+      font-size: 0.8em;
+      color: #e0e0e0;
+      margin: 5px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      padding: 5px;
+      border-radius: 4px;
     }
     #compass {
       border: 2px solid #00d4ff;
@@ -306,6 +314,10 @@
         padding: 4px 8px;
         font-size: 0.7em;
       }
+      .manual input[type="file"] {
+        font-size: 0.7em;
+        padding: 3px;
+      }
       #gpsStatus, #message, #debugStatus {
         font-size: 0.8em;
       }
@@ -331,7 +343,6 @@
       }
       .collected-items p {
         font-size: 0.7em;
-          align-items: center;
       }
     }
   </style>
@@ -387,12 +398,28 @@
 
     <div class="card manual">
       <h2>Manual Mode</h2>
-      <button id="toggleManual" title="Enable to set your own points">Toggle Manual</button>
+      <button id="toggleManual" title="Enable to set your own points and sounds">Toggle Manual</button>
       <div id="manualControls" style="display: none;">
-        <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button></p>
-        <p id="manual2">Manual 2: <button class="setGps" data-point="2">Set GPS</button></p>
-        <p id="manual3">Manual 3: <button class="setGps" data-point="3">Set GPS</button></p>
-        <p id="manual4">Manual 4: <button class="setGps" data-point="4">Set GPS</button></p>
+        <p id="manual1">Manual 1: <button class="setGps" data-point="1">Set GPS</button>
+          <input type="file" class="loadSound" data-point="1" accept="audio/*">
+          <button class="record-btn" data-point="1">Record Sound</button>
+          <button class="delete-btn" data-point="1" style="display: none;">Delete Sound</button>
+        </p>
+        <p id="manual2">Manual 2: <button class="setGps" data-point="2">Set GPS</button>
+          <input type="file" class="loadSound" data-point="2" accept="audio/*">
+          <button class="record-btn" data-point="2">Record Sound</button>
+          <button class="delete-btn" data-point="2" style="display: none;">Delete Sound</button>
+        </p>
+        <p id="manual3">Manual 3: <button class="setGps" data-point="3">Set GPS</button>
+          <input type="file" class="loadSound" data-point="3" accept="audio/*">
+          <button class="record-btn" data-point="3">Record Sound</button>
+          <button class="delete-btn" data-point="3" style="display: none;">Delete Sound</button>
+        </p>
+        <p id="manual4">Manual 4: <button class="setGps" data-point="4">Set GPS</button>
+          <input type="file" class="loadSound" data-point="4" accept="audio/*">
+          <button class="record-btn" data-point="4">Record Sound</button>
+          <button class="delete-btn" data-point="4" style="display: none;">Delete Sound</button>
+        </p>
       </div>
     </div>
   </div>
@@ -413,14 +440,14 @@
     let gainNodesInitialized = false;
     let currentPosition = null;
     let targetPoints = [
-      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+      { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false }
     ];
     let selectedTarget = null;
     let audioBuffers = [null, null, null, null];
-    let recordedBuffers = [null, null, null, null];
+    let customBuffers = [null, null, null, null];
     let sounds = [[], [], [], []];
     let gainNodes = [];
     let beepSource = null;
@@ -450,54 +477,54 @@
       });
     }
 
-    function saveRecording(index, blob) {
+    function saveCustomSound(index, blob) {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const record = { id: `recordedSound${index}`, blob: blob };
+        const record = { id: `customSound${index}`, blob: blob };
         const request = store.put(record);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
       });
     }
 
-    function loadRecordings() {
+    function loadCustomSounds() {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readonly');
         const store = transaction.objectStore(STORE_NAME);
         const requests = [];
         for (let i = 0; i < 4; i++) {
           requests.push(new Promise((res) => {
-            const request = store.get(`recordedSound${i}`);
+            const request = store.get(`customSound${i}`);
             request.onsuccess = () => {
               if (request.result) {
-                targetPoints[i].hasRecording = true;
-                updateDebugStatus(`Recording found for Target ${i + 1}`);
+                targetPoints[i].hasCustomSound = true;
+                updateDebugStatus(`Custom sound found for Target ${i + 1}`);
                 res(request.result.blob);
               } else {
-                targetPoints[i].hasRecording = false;
-                updateDebugStatus(`No recording for Target ${i + 1}`);
+                targetPoints[i].hasCustomSound = false;
+                updateDebugStatus(`No custom sound for Target ${i + 1}`);
                 res(null);
               }
             };
             request.onerror = () => reject(request.error);
           }));
         }
-        Promise.all(requests).then(recordings => resolve(recordings));
+        Promise.all(requests).then(sounds => resolve(sounds));
       });
     }
 
-    function deleteRecording(index) {
+    function deleteCustomSound(index) {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
-        const request = store.delete(`recordedSound${index}`);
+        const request = store.delete(`customSound${index}`);
         request.onsuccess = () => resolve();
         request.onerror = () => reject(request.error);
       });
     }
 
-    function clearRecordings() {
+    function clearCustomSounds() {
       return new Promise((resolve, reject) => {
         const transaction = db.transaction([STORE_NAME], 'readwrite');
         const store = transaction.objectStore(STORE_NAME);
@@ -544,10 +571,10 @@
           sound: null,
           found: false,
           discoveryEligible: true,
-          hasRecording: targetPoints[index]?.hasRecording || false,
-          lat: targetPoints[index]?.hasRecording ? targetPoints[index].lat : point.lat,
-          lng: targetPoints[index]?.hasRecording ? targetPoints[index].lng : point.lng,
-          set: targetPoints[index]?.hasRecording ? true : point.set
+          hasCustomSound: targetPoints[index]?.hasCustomSound || false,
+          lat: targetPoints[index]?.hasCustomSound ? targetPoints[index].lat : point.lat,
+          lng: targetPoints[index]?.hasCustomSound ? targetPoints[index].lng : point.lng,
+          set: targetPoints[index]?.hasCustomSound ? true : point.set
         }));
         targetPoints.forEach((point, index) => {
           if (point.lat && point.lng) {
@@ -598,43 +625,50 @@
       }
     }
 
-    async function decodeRecordedAudio() {
+    async function decodeCustomSounds() {
       try {
-        const recordings = await loadRecordings();
-        for (let i = 0; i < recordings.length; i++) {
-          if (recordings[i]) {
-            const arrayBuffer = await recordings[i].arrayBuffer();
-            recordedBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
-            updateDebugStatus(`Decoded recorded audio for Target ${i + 1}`);
+        const sounds = await loadCustomSounds();
+        for (let i = 0; i < sounds.length; i++) {
+          if (sounds[i]) {
+            const arrayBuffer = await sounds[i].arrayBuffer();
+            customBuffers[i] = await audioCtx.decodeAudioData(arrayBuffer);
+            updateDebugStatus(`Decoded custom sound for Target ${i + 1}`);
           } else {
-            recordedBuffers[i] = null;
+            customBuffers[i] = null;
           }
         }
       } catch (error) {
-        updateDebugStatus(`Error decoding recorded audio: ${error.message}`);
+        updateDebugStatus(`Error decoding custom sounds: ${error.message}`);
       }
     }
 
-    function updateRecordingUI() {
+    function updateManualUI() {
       for (let i = 0; i < 4; i++) {
         const pointIndex = i;
-        let deleteButtonHtml = targetPoints[pointIndex].hasRecording
-          ? `<button class="delete-btn" data-point="${pointIndex + 1}">Delete Recording</button>`
-          : '';
+        const deleteButton = document.querySelector(`.delete-btn[data-point="${pointIndex + 1}"]`);
+        deleteButton.style.display = targetPoints[pointIndex].hasCustomSound ? 'inline-block' : 'none';
+        let html = `Manual ${pointIndex + 1}: `;
         if (targetPoints[pointIndex].set) {
-          document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${targetPoints[pointIndex].lat.toFixed(4)}, Lng ${targetPoints[pointIndex].lng.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>${deleteButtonHtml}`;
+          html += `Lat ${targetPoints[pointIndex].lat.toFixed(4)}, Lng ${targetPoints[pointIndex].lng.toFixed(4)} `;
         } else {
-          document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: <button class="setGps" data-point="${pointIndex + 1}">Set GPS</button>${deleteButtonHtml}`;
+          html += `<button class="setGps" data-point="${pointIndex + 1}">Set GPS</button> `;
         }
+        html += `<input type="file" class="loadSound" data-point="${pointIndex + 1}" accept="audio/*"> `;
+        html += `<button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button> `;
+        html += `<button class="delete-btn" data-point="${pointIndex + 1}" style="display: ${targetPoints[pointIndex].hasCustomSound ? 'inline-block' : 'none'};">Delete Sound</button>`;
+        document.getElementById(`manual${pointIndex + 1}`).innerHTML = html;
       }
       document.querySelectorAll('.setGps').forEach(button => {
         button.addEventListener('click', setGpsHandler);
+      });
+      document.querySelectorAll('.loadSound').forEach(input => {
+        input.addEventListener('change', loadSoundHandler);
       });
       document.querySelectorAll('.record-btn').forEach(btn => {
         btn.addEventListener('click', recordSoundHandler);
       });
       document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', deleteRecordingHandler);
+        btn.addEventListener('click', deleteSoundHandler);
       });
     }
 
@@ -657,16 +691,16 @@
       }
 
       if (!gainNodesInitialized || !gainNodes[index]) {
-        updateDebugStatus(`Gain nodes not initialized for Sound ${index + 1}, gainNodesInitialized: ${gainNodesInitialized}, gainNodes[${index}]: ${!!gainNodes[index]}`);
+        updateDebugStatus(`Gain nodes not initialized for Sound ${index + 1}`);
         updateMessage('Audio setup incomplete, please try again', 'error');
         return;
       }
 
       let bufferToPlay = null;
 
-      if (targetPoints[index].hasRecording && recordedBuffers[index]) {
-        bufferToPlay = recordedBuffers[index];
-        updateDebugStatus(`Using recorded sound for Target ${index + 1}`);
+      if (targetPoints[index].hasCustomSound && customBuffers[index]) {
+        bufferToPlay = customBuffers[index];
+        updateDebugStatus(`Using custom sound for Target ${index + 1}`);
       } else if (audioBuffers[index]) {
         bufferToPlay = audioBuffers[index];
         updateDebugStatus(`Using default sound for Target ${index + 1}`);
@@ -727,12 +761,11 @@
       }
 
       const now = Date.now();
-      // Calculate interval based on distance (1000ms at 30m to 429ms at 3m)
-      let interval = 1000; // Default to 60 bpm
+      let interval = 1000;
       if (distance <= 30 && distance > 3) {
-        interval = Math.max(100, 1000 - 21.15 * (30 - distance)); // Linear interpolation
+        interval = Math.max(100, 1000 - 21.15 * (30 - distance));
       } else if (distance <= 3) {
-        interval = 429; // 140 bpm at 3m
+        interval = 429;
       }
       if (now - lastBeepTime < interval) return;
       lastBeepTime = now;
@@ -849,21 +882,21 @@
           sound: null,
           found: false,
           discoveryEligible: true,
-          hasRecording: point.hasRecording
+          hasCustomSound: point.hasCustomSound
         }));
       } else {
         targetPoints = [
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false },
-          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasRecording: false }
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false },
+          { lat: null, lng: null, set: false, sound: null, found: false, discoveryEligible: true, hasCustomSound: false }
         ];
-        recordedBuffers = [null, null, null, null];
+        customBuffers = [null, null, null, null];
         try {
-          await clearRecordings();
-          updateDebugStatus('All recordings cleared from storage');
+          await clearCustomSounds();
+          updateDebugStatus('All custom sounds cleared from storage');
         } catch (error) {
-          updateDebugStatus(`Error clearing recordings: ${error.message}`);
+          updateDebugStatus(`Error clearing custom sounds: ${error.message}`);
         }
       }
 
@@ -917,7 +950,7 @@
       }
       initializeGainNodes();
       loadAdminCoordinates();
-      updateRecordingUI();
+      updateManualUI();
     }
 
     function setGpsHandler(event) {
@@ -936,19 +969,33 @@
       targetPoints[pointIndex].lng = currentPosition.longitude;
       targetPoints[pointIndex].set = true;
       targetPoints[pointIndex].discoveryEligible = false;
-      let deleteButtonHtml = targetPoints[pointIndex].hasRecording
-        ? `<button class="delete-btn" data-point="${pointIndex + 1}">Delete Recording</button>`
-        : '';
-      document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${currentPosition.latitude.toFixed(4)}, Lng ${currentPosition.longitude.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>${deleteButtonHtml}`;
+      updateManualUI();
       updateMessage(`Target ${pointIndex + 1} set successfully`, 'success');
       button.classList.add('active');
       playSound(pointIndex, false);
-      document.querySelectorAll('.record-btn').forEach(btn => {
-        btn.addEventListener('click', recordSoundHandler);
-      });
-      document.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', deleteRecordingHandler);
-      });
+    }
+
+    async function loadSoundHandler(event) {
+      const input = event.target;
+      const pointIndex = parseInt(input.dataset.point) - 1;
+      const file = input.files[0];
+      if (!file) {
+        updateDebugStatus(`No file selected for Target ${pointIndex + 1}`);
+        return;
+      }
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        customBuffers[pointIndex] = await audioCtx.decodeAudioData(arrayBuffer);
+        targetPoints[pointIndex].hasCustomSound = true;
+        await saveCustomSound(pointIndex, file);
+        updateManualUI();
+        updateMessage(`Sound loaded for Target ${pointIndex + 1}`, 'success');
+        updateDebugStatus(`Sound file loaded and decoded for Target ${pointIndex + 1}`);
+        await playSound(pointIndex, false);
+      } catch (error) {
+        updateDebugStatus(`Error loading sound for Target ${pointIndex + 1}: ${error.message}`);
+        updateMessage(`Error loading sound: ${error.message}`, 'error');
+      }
     }
 
     async function recordSoundHandler(event) {
@@ -964,8 +1011,6 @@
             if (e.data.size > 0) {
               recordedChunks.push(e.data);
               updateDebugStatus(`Recorded data available for Target ${pointIndex + 1}, size: ${e.data.size}`);
-            } else {
-              updateDebugStatus(`No recorded data available for Target ${pointIndex + 1}`);
             }
           };
           mediaRecorder.onstop = async () => {
@@ -977,23 +1022,16 @@
             }
             const blob = new Blob(recordedChunks, { type: 'audio/webm' });
             try {
-              await saveRecording(pointIndex, blob);
+              await saveCustomSound(pointIndex, blob);
               const arrayBuffer = await blob.arrayBuffer();
-              recordedBuffers[pointIndex] = await audioCtx.decodeAudioData(arrayBuffer);
-              targetPoints[pointIndex].hasRecording = true;
-              updateDebugStatus(`Recording saved for Target ${pointIndex + 1}`);
+              customBuffers[pointIndex] = await audioCtx.decodeAudioData(arrayBuffer);
+              targetPoints[pointIndex].hasCustomSound = true;
+              updateManualUI();
               updateMessage(`Recording saved for Target ${pointIndex + 1}`, 'success');
+              updateDebugStatus(`Recording saved for Target ${pointIndex + 1}`);
               await playSound(pointIndex, false);
-              let deleteButtonHtml = `<button class="delete-btn" data-point="${pointIndex + 1}">Delete Recording</button>`;
-              document.getElementById(`manual${pointIndex + 1}`).innerHTML = `Manual ${pointIndex + 1}: Lat ${targetPoints[pointIndex].lat.toFixed(4)}, Lng ${targetPoints[pointIndex].lng.toFixed(4)} <button class="record-btn" data-point="${pointIndex + 1}">Record Sound</button>${deleteButtonHtml}`;
-              document.querySelectorAll('.record-btn').forEach(btn => {
-                btn.addEventListener('click', recordSoundHandler);
-              });
-              document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', deleteRecordingHandler);
-              });
             } catch (error) {
-              updateDebugStatus(`Error saving or decoding recording for Target ${pointIndex + 1}: ${error.message}`);
+              updateDebugStatus(`Error saving recording for Target ${pointIndex + 1}: ${error.message}`);
               updateMessage(`Error saving recording`, 'error');
             }
             stream.getTracks().forEach(track => track.stop());
@@ -1018,22 +1056,19 @@
       }
     }
 
-    async function deleteRecordingHandler(event) {
+    async function deleteSoundHandler(event) {
       const button = event.target;
       const pointIndex = parseInt(button.dataset.point) - 1;
       try {
-        await deleteRecording(pointIndex);
-        targetPoints[pointIndex].hasRecording = false;
-        recordedBuffers[pointIndex] = null;
-        targetPoints[pointIndex].lat = null;
-        targetPoints[pointIndex].lng = null;
-        targetPoints[pointIndex].set = false;
-        updateDebugStatus(`Recording deleted for Target ${pointIndex + 1}`);
-        updateMessage(`Recording deleted for Target ${pointIndex + 1}`, 'success');
-        updateRecordingUI();
+        await deleteCustomSound(pointIndex);
+        targetPoints[pointIndex].hasCustomSound = false;
+        customBuffers[pointIndex] = null;
+        updateManualUI();
+        updateDebugStatus(`Custom sound deleted for Target ${pointIndex + 1}`);
+        updateMessage(`Custom sound deleted for Target ${pointIndex + 1}`, 'success');
       } catch (error) {
-        updateDebugStatus(`Error deleting recording for Target ${pointIndex + 1}: ${error.message}`);
-        updateMessage(`Error deleting recording`, 'error');
+        updateDebugStatus(`Error deleting custom sound for Target ${pointIndex + 1}: ${error.message}`);
+        updateMessage(`Error deleting custom sound`, 'error');
       }
     }
 
@@ -1139,18 +1174,12 @@
           sound: null,
           found: false,
           discoveryEligible: true,
-          hasRecording: point.hasRecording
+          hasCustomSound: point.hasCustomSound
         }));
-        for (let i = 1; i <= 4; i++) {
-          document.getElementById(`manual${i}`).innerHTML = `Manual ${i}: <button class="setGps" data-point="${i}">Set GPS</button>`;
-          document.querySelectorAll(`.setGps[data-point="${i}"]`)[0].classList.remove('active');
-        }
-        updateRecordingUI();
-        document.querySelectorAll('.setGps').forEach(button => {
-          button.addEventListener('click', setGpsHandler);
-        });
+        updateManualUI();
       } else if (!manualMode) {
         loadAdminCoordinates();
+        updateManualUI();
       }
     });
 
@@ -1163,10 +1192,6 @@
         updateTargetDistance();
         updateCompass();
       });
-    });
-
-    document.querySelectorAll('.setGps').forEach(button => {
-      button.addEventListener('click', setGpsHandler);
     });
 
     document.querySelectorAll('input[type="range"]').forEach((slider, index) => {
@@ -1229,17 +1254,15 @@
 
     async function initialize() {
       try {
-        // Initialize gain nodes first
         initializeGainNodes();
         if (!gainNodesInitialized) {
           throw new Error('Gain nodes initialization failed during startup.');
         }
-
         await openDB();
         await preloadAudioFiles();
-        await decodeRecordedAudio();
+        await decodeCustomSounds();
         await resetAll(true);
-        updateRecordingUI();
+        updateManualUI();
         loadAdminCoordinates();
         initializeGPS();
         updateDebugStatus('App fully initialized');
